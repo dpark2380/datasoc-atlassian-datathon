@@ -20,7 +20,10 @@ import streamlit as st
 
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT / "analysis"))
-import sensitivity_checks  # noqa: E402
+try:
+    from analysis import sensitivity_checks  # noqa: E402
+except ImportError:
+    import sensitivity_checks  # noqa: E402
 
 RISK_CSV = ROOT / "analysis" / "customer_risk.csv"
 TICKETS_CSV = ROOT / "analysis" / "cleaned_tickets.csv"
