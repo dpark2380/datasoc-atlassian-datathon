@@ -49,6 +49,7 @@ DOC_FILES = {
     "Sensitivity and robustness checks": "findings-sensitivity.md",
     "Customer success playbook research": "research-cs-playbook-actions.md",
     "Business context research (SEC filings)": "research-differentiators.md",
+    "Business context figures, with sources": "research-business-context-figures.md",
     "Deck outline": "deck-outline.md",
 }
 
