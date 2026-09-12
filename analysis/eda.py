@@ -43,6 +43,9 @@ Writes: analysis/cleaned_tickets.csv   (ticket-level, descriptive only)
 from pathlib import Path
 
 import pandas as pd
+from sklearn.cluster import KMeans
+from sklearn.ensemble import IsolationForest
+from sklearn.preprocessing import StandardScaler
 
 DATA_DIR = Path(__file__).parent.parent / "references" / "Dataset"
 OUT_TICKETS = Path(__file__).parent / "cleaned_tickets.csv"
@@ -55,8 +58,21 @@ EMBEDDEDNESS_WEIGHTS = {"Collaborators": 1, "Integrations Used": 2}
 TIER_VALUE = {"Free": 0.0, "Standard": 1 / 3, "Premium": 2 / 3, "Enterprise": 1.0}
 USAGE_SNAPSHOT_DATE = pd.Timestamp("2023-05-31")  # end of the product_usage window
 
+# Unsupervised segments, independent of the Risk Score above -- see
+# docs/findings-ml-segments.md for the full k=2..6 silhouette scan. k=2 has
+# the best silhouette score (0.40) but only recovers a single low/high usage
+# split; k=4 (0.30) separates usage volume from integration depth, which is
+# a genuinely different axis worth surfacing even at a lower silhouette
+# score. Both are reported, not just the one that "tells a better story."
+CLUSTER_METRICS = ["Active Days", "Sessions", "Product Actions", "Collaborators", "Integrations Used"]
+N_CLUSTERS = 4
+# 5% contamination: a smaller, differently-defined set of unusual accounts,
+# not meant to reproduce the 25% quartile-based At Risk flag.
+ANOMALY_CONTAMINATION = 0.05
+RANDOM_STATE = 42
+
 PLAYBOOK_ACTIONS = {
-    "Monitor Only": "No action -- track only.",
+    "Monitor Only": "No action, track only.",
     "New & Struggling": (
         "Milestone-tracked onboarding review: named CSM owner runs a structured "
         "adoption session scoped to this account's unused workflows, checked "
@@ -125,6 +141,67 @@ def percentile_within_group(df: pd.DataFrame, value_col: str, group_cols: list[s
     return df.groupby(group_cols)[value_col].rank(pct=True) * 100
 
 
+def label_usage_clusters(centroids: pd.DataFrame) -> dict[int, str]:
+    """Name each cluster from its own centroid, not a hardcoded index --
+    KMeans cluster numbering isn't a meaningful order on its own. Splits on
+    two axes: usage volume (Active Days/Sessions/Product Actions) and
+    integration depth (Collaborators/Integrations Used), each ranked across
+    the k centroids, then quadrant-labeled. Written for any even k."""
+    volume = centroids[ENGAGEMENT_METRICS].mean(axis=1)
+    depth = centroids[list(EMBEDDEDNESS_WEIGHTS)].mean(axis=1)
+    volume_rank = volume.rank(method="first").astype(int) - 1
+    depth_rank = depth.rank(method="first").astype(int) - 1
+    half = len(centroids) / 2
+
+    labels = {}
+    for cluster_id in centroids.index:
+        high_volume = volume_rank[cluster_id] >= half
+        high_depth = depth_rank[cluster_id] >= half
+        if high_volume and high_depth:
+            labels[cluster_id] = "Power users"
+        elif high_volume and not high_depth:
+            labels[cluster_id] = "Active, shallow integration"
+        elif not high_volume and high_depth:
+            labels[cluster_id] = "Integration-heavy, moderate usage"
+        else:
+            labels[cluster_id] = "Low engagement"
+    return labels
+
+
+def add_usage_clusters(df: pd.DataFrame) -> pd.DataFrame:
+    """KMeans on standardised usage metrics -- discovers segments from the
+    data itself, instead of the hand-picked Plan Type x Product grouping
+    used for the Risk Score. See docs/findings-ml-segments.md."""
+    df = df.copy()
+    features = df[CLUSTER_METRICS].fillna(df[CLUSTER_METRICS].median())
+    X = StandardScaler().fit_transform(features)
+
+    km = KMeans(n_clusters=N_CLUSTERS, random_state=RANDOM_STATE, n_init=10).fit(X)
+    df["Usage Cluster ID"] = km.labels_
+
+    centroids = df.groupby("Usage Cluster ID")[CLUSTER_METRICS].mean()
+    labels = label_usage_clusters(centroids)
+    df["Usage Cluster"] = df["Usage Cluster ID"].map(labels)
+    return df
+
+
+def add_usage_anomalies(df: pd.DataFrame) -> pd.DataFrame:
+    """Isolation Forest on the same standardised usage metrics -- flags
+    accounts with an unusual overall usage SHAPE (e.g. high sessions but
+    low product actions), a different concept from the quartile-based
+    At Risk flag, which only looks at overall engagement level within a
+    peer group. See docs/findings-ml-segments.md for how much the two
+    flags overlap."""
+    df = df.copy()
+    features = df[CLUSTER_METRICS].fillna(df[CLUSTER_METRICS].median())
+    X = StandardScaler().fit_transform(features)
+
+    iso = IsolationForest(contamination=ANOMALY_CONTAMINATION, random_state=RANDOM_STATE).fit(X)
+    df["Usage Anomaly"] = iso.predict(X) == -1
+    df["Usage Anomaly Score"] = -iso.score_samples(X)  # higher = more unusual
+    return df
+
+
 def build_customer_risk(customers: pd.DataFrame, usage_summary: pd.DataFrame, ticket_counts: pd.DataFrame) -> pd.DataFrame:
     df = customers.merge(usage_summary, on="Customer ID", how="left")
     df = df.merge(ticket_counts, on="Customer ID", how="left")
@@ -187,6 +264,9 @@ def build_customer_risk(customers: pd.DataFrame, usage_summary: pd.DataFrame, ti
     df["Risk Category"] = df.apply(categorise, axis=1)
     df["Recommended Action"] = df["Risk Category"].map(PLAYBOOK_ACTIONS)
 
+    df = add_usage_clusters(df)
+    df = add_usage_anomalies(df)
+
     return df
 
 
@@ -210,6 +290,14 @@ def main() -> None:
     print()
     print("Risk Category counts:")
     print(risk["Risk Category"].value_counts())
+    print()
+    print("Usage Cluster counts:")
+    print(risk["Usage Cluster"].value_counts())
+    print()
+    n_anomaly = risk["Usage Anomaly"].sum()
+    overlap = risk.loc[risk["Usage Anomaly"], "At Risk"].mean()
+    print(f"Usage anomalies: {n_anomaly} / {len(risk)} ({n_anomaly / len(risk):.1%})")
+    print(f"Of those, already flagged At Risk by the quartile method: {overlap:.1%}")
 
 
 if __name__ == "__main__":
