@@ -107,6 +107,10 @@ with st.sidebar:
     st.caption("Applies to the Risk Model and Usage Segments tabs.")
     plans = st.multiselect("Plan Type", options=PLAN_ORDER, default=PLAN_ORDER)
 
+if not plans:
+    st.info("Select at least one plan type in the sidebar to see the analysis.", icon=":material/filter_alt:")
+    st.stop()
+
 filtered = risk[risk["Plan Type"].isin(plans)]
 at_risk = filtered[filtered["At Risk"]]
 
@@ -141,10 +145,10 @@ with tab_overview:
     c_ticket1, c_ticket2 = st.columns(2)
     with c_ticket1:
         fig = px.bar(tickets["Ticket Type"].value_counts().reset_index(), x="Ticket Type", y="count")
-        st.plotly_chart(fig, width="stretch")
+        st.plotly_chart(fig, width="stretch", key="dash_chart_1")
     with c_ticket2:
         fig = px.bar(tickets["Ticket Channel"].value_counts().reset_index(), x="Ticket Channel", y="count")
-        st.plotly_chart(fig, width="stretch")
+        st.plotly_chart(fig, width="stretch", key="dash_chart_2")
 
 # --- Risk model --------------------------------------------------------------
 with tab_risk:
@@ -152,12 +156,12 @@ with tab_risk:
     st.caption("Active Days by Plan Type. This is genuine, not a data artifact (see Documentation tab).")
     means = risk.groupby("Plan Type", observed=True)["Active Days"].mean().reindex(PLAN_ORDER).reset_index()
     fig = px.bar(means, x="Plan Type", y="Active Days")
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, width="stretch", key="dash_chart_3")
 
     st.subheader("Risk category breakdown")
     counts = filtered["Risk Category"].value_counts().reindex(CATEGORY_ORDER).reset_index()
     fig = px.bar(counts, x="Risk Category", y="count")
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, width="stretch", key="dash_chart_4")
     st.markdown(
         "- **Monitor Only**: not at risk. Usage sits above the bottom quarter for this customer's plan "
         "and product peer group. No action.\n"
@@ -194,7 +198,7 @@ with tab_risk:
     st.caption("Secondary real cut: Jira and other daily-use tools show higher engagement than Loom.")
     by_product = usage.groupby("Product")["Active Days"].mean().sort_values().reset_index()
     fig = px.bar(by_product, x="Product", y="Active Days")
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, width="stretch", key="dash_chart_5")
 
     st.subheader("At-risk customers and recommended action (sample)")
     st.dataframe(
@@ -236,7 +240,7 @@ with tab_segments:
     anomaly_overlap = filtered.groupby("Usage Anomaly")["At Risk"].mean().reset_index()
     anomaly_overlap["Usage Anomaly"] = anomaly_overlap["Usage Anomaly"].map({True: "Anomaly", False: "Not anomaly"})
     fig = px.bar(anomaly_overlap, x="Usage Anomaly", y="At Risk", labels={"At Risk": "Share also At Risk"})
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, width="stretch", key="dash_chart_6")
 
     st.subheader("Usage clustered into 2 vs. 4 segments")
     st.caption(
@@ -252,12 +256,12 @@ with tab_segments:
             st.markdown(f"**k={k}**")
             counts = filtered[cluster_col].value_counts().reset_index()
             fig = px.bar(counts, x=cluster_col, y="count")
-            st.plotly_chart(fig, width="stretch")
+            st.plotly_chart(fig, width="stretch", key=f"cluster_counts_k{k}")
             fig = px.scatter(
                 filtered, x="Usage Volume", y="Integration Depth", color=cluster_col,
                 opacity=0.35, render_mode="webgl",
             )
-            st.plotly_chart(fig, width="stretch")
+            st.plotly_chart(fig, width="stretch", key=f"cluster_scatter_k{k}")
 
     st.subheader("Where the usage anomalies sit")
     st.caption(
@@ -271,7 +275,7 @@ with tab_segments:
         color_discrete_map={"Not anomaly": "#DFE1E6", "Anomaly": "#DE350B"},
         opacity=0.5, render_mode="webgl",
     )
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, width="stretch", key="dash_chart_7")
 
     st.subheader("How this connects to the Risk Categories")
     st.caption(
@@ -331,7 +335,7 @@ with tab_reliability:
         labels={rel_col: "Reliability of the 5-month average"},
     )
     fig.update_yaxes(range=[0, 1.05])
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, width="stretch", key="dash_chart_8")
 
     st.markdown(
         "Collaborators is the weakest input by a clear margin. In any single month it is mostly noise: its "
@@ -397,7 +401,7 @@ with tab_robustness:
         var_name="Plan Type", value_name="Share",
     )
     fig = px.bar(cutoff_long, x="Cutoff %", y="Share", color="Plan Type", barmode="stack")
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, width="stretch", key="dash_chart_9")
     st.dataframe(results["cutoff"], width="stretch")
 
     st.markdown("**Embeddedness weight.** Rank correlation and category-flip rate, across Integrations Used weights from 1x to 5x:")
@@ -405,7 +409,7 @@ with tab_robustness:
         results["embeddedness"], x="Integrations weight", y="Rank correlation vs. baseline (2x)", markers=True,
     )
     fig.update_yaxes(range=[0, 1.05])
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, width="stretch", key="dash_chart_10")
     st.dataframe(results["embeddedness"], width="stretch")
 
     st.markdown("**Urgency coefficient.** Risk Score rank correlation across coefficients from 0.2 to 0.5 (Risk Category doesn't depend on this at all):")
@@ -413,7 +417,7 @@ with tab_robustness:
         results["urgency"], x="Urgency coefficient", y="Rank correlation vs. baseline (0.3)", markers=True,
     )
     fig.update_yaxes(range=[0, 1.05])
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, width="stretch", key="dash_chart_11")
     st.dataframe(results["urgency"], width="stretch")
 
     st.markdown("**Bootstrap stability.** Per-customer agreement rate with the full-population At Risk flag, across 20 resamples:")
@@ -423,7 +427,7 @@ with tab_robustness:
     with col_b:
         fig = px.histogram(results["bootstrap_detail"], nbins=20, labels={"value": "Agreement rate"})
         fig.update_layout(showlegend=False)
-        st.plotly_chart(fig, width="stretch")
+        st.plotly_chart(fig, width="stretch", key="dash_chart_12")
 
 # --- Documentation -----------------------------------------------------------
 with tab_docs:
