@@ -138,48 +138,46 @@ with tab_risk:
     fig = px.bar(means, x="Plan Type", y="Active Days")
     st.plotly_chart(fig, width="stretch")
 
-    c1, c2 = st.columns(2)
-    with c1:
-        st.subheader("Risk category breakdown")
-        counts = filtered["Risk Category"].value_counts().reindex(CATEGORY_ORDER).reset_index()
-        fig = px.bar(counts, x="Risk Category", y="count")
-        st.plotly_chart(fig, width="stretch")
-        st.markdown(
-            "- **Monitor Only**: not at risk. Usage sits above the bottom quarter for this customer's plan "
-            "and product peer group. No action.\n"
-            "    - At Risk = Engagement Percentile ≤ 25, where Engagement Percentile is this customer's "
-            "Engagement Composite ranked (percentile, 0-100) only against customers on the same Plan Type "
-            "and Primary Product.\n"
-            "    - Engagement Composite = the average of Active Days, Sessions, and Product Actions, each "
-            "min-max scaled to 0-1 first so no single metric's raw scale dominates the average.\n"
-            "    - Monitor Only is simply every customer where this condition is false (Engagement "
-            "Percentile > 25).\n"
-            "- **New & Struggling**: at risk, and recently acquired relative to the rest of the customer "
-            "base. Reads as an onboarding problem, not churn.\n"
-            "    - Recently acquired = Account Age ≤ the 25th percentile of Account Age across *all* "
-            "customers, where Account Age = (2023-05-31 minus Account Created Date), in days.\n"
-            "    - This is a relative quartile, not an absolute cutoff like \"under 90 days\": no customer "
-            "in this dataset is younger than about 1.5 years by the 2023 usage window, so \"recently "
-            "acquired\" means the youngest 25% of the base, not literally new.\n"
-            "- **Established & Declining**: at risk, longer-tenured, and either lower plan tier or lower "
-            "embeddedness. A real but lower-stakes churn risk.\n"
-            "    - Applies when At Risk is true, Recently Acquired is false, and High-Value (defined below) "
-            "is also false.\n"
-            "- **High-Value Disengaged**: at risk, longer-tenured, and either Enterprise/Premium tier or "
-            "heavily integrated (top quartile of Collaborators + Integrations Used). The account most "
-            "worth protecting.\n"
-            "    - High-Value = Plan Type is Enterprise or Premium, OR Embeddedness Percentile ≥ 75.\n"
-            "    - Embeddedness Percentile = the percentile rank (0-100), across *all* customers, of "
-            "(Collaborators × 1) + (Integrations Used × 2). Integrations Used is weighted double because it "
-            "showed a sharper relationship with plan tier in testing (see the Documentation tab).\n"
-            "    - Applies when At Risk is true, Recently Acquired is false, and High-Value is true."
-        )
-    with c2:
-        st.subheader("Usage by product")
-        st.caption("Secondary real cut: Jira and other daily-use tools show higher engagement than Loom.")
-        by_product = usage.groupby("Product")["Active Days"].mean().sort_values().reset_index()
-        fig = px.bar(by_product, x="Product", y="Active Days")
-        st.plotly_chart(fig, width="stretch")
+    st.subheader("Risk category breakdown")
+    counts = filtered["Risk Category"].value_counts().reindex(CATEGORY_ORDER).reset_index()
+    fig = px.bar(counts, x="Risk Category", y="count")
+    st.plotly_chart(fig, width="stretch")
+    st.markdown(
+        "- **Monitor Only**: not at risk. Usage sits above the bottom quarter for this customer's plan "
+        "and product peer group. No action.\n"
+        "    - At Risk = Engagement Percentile ≤ 25, where Engagement Percentile is this customer's "
+        "Engagement Composite ranked (percentile, 0-100) only against customers on the same Plan Type "
+        "and Primary Product.\n"
+        "    - Engagement Composite = the average of Active Days, Sessions, and Product Actions, each "
+        "min-max scaled to 0-1 first so no single metric's raw scale dominates the average.\n"
+        "    - Monitor Only is simply every customer where this condition is false (Engagement "
+        "Percentile > 25).\n"
+        "- **New & Struggling**: at risk, and recently acquired relative to the rest of the customer "
+        "base. Reads as an onboarding problem, not churn.\n"
+        "    - Recently acquired = Account Age ≤ the 25th percentile of Account Age across *all* "
+        "customers, where Account Age = (2023-05-31 minus Account Created Date), in days.\n"
+        "    - This is a relative quartile, not an absolute cutoff like \"under 90 days\": no customer "
+        "in this dataset is younger than about 1.5 years by the 2023 usage window, so \"recently "
+        "acquired\" means the youngest 25% of the base, not literally new.\n"
+        "- **Established & Declining**: at risk, longer-tenured, and either lower plan tier or lower "
+        "embeddedness. A real but lower-stakes churn risk.\n"
+        "    - Applies when At Risk is true, Recently Acquired is false, and High-Value (defined below) "
+        "is also false.\n"
+        "- **High-Value Disengaged**: at risk, longer-tenured, and either Enterprise/Premium tier or "
+        "heavily integrated (top quartile of Collaborators + Integrations Used). The account most "
+        "worth protecting.\n"
+        "    - High-Value = Plan Type is Enterprise or Premium, OR Embeddedness Percentile ≥ 75.\n"
+        "    - Embeddedness Percentile = the percentile rank (0-100), across *all* customers, of "
+        "(Collaborators × 1) + (Integrations Used × 2). Integrations Used is weighted double because it "
+        "showed a sharper relationship with plan tier in testing (see the Documentation tab).\n"
+        "    - Applies when At Risk is true, Recently Acquired is false, and High-Value is true."
+    )
+
+    st.subheader("Usage by product")
+    st.caption("Secondary real cut: Jira and other daily-use tools show higher engagement than Loom.")
+    by_product = usage.groupby("Product")["Active Days"].mean().sort_values().reset_index()
+    fig = px.bar(by_product, x="Product", y="Active Days")
+    st.plotly_chart(fig, width="stretch")
 
     st.subheader("At-risk customers and recommended action (sample)")
     st.dataframe(
