@@ -1,10 +1,10 @@
 """
-Results dashboard: everything from the analysis in one place. Export
-charts from here into the deck; this app itself is never demoed live
-(submission is deck/PDF only). The single-customer risk-scorer tool (live
-demo, workstream C) is a separate app.
+Results dashboard page: everything from the analysis in one place. Export
+charts from here into the deck; this page is never demoed live (submission
+is deck/PDF only). The single-customer risk-scorer (live demo, workstream C)
+is the other page in this app, app_pages/risk_scorer.py.
 
-Run: .venv/bin/streamlit run dashboard/app.py
+Run: .venv/bin/streamlit run streamlit_app.py
 
 Reads analysis/customer_risk.csv and analysis/cleaned_tickets.csv, both
 produced by analysis/eda.py, plus the docs/ findings for the Documentation
@@ -45,8 +45,6 @@ DOC_FILES = {
     "Customer success playbook research": "research-cs-playbook-actions.md",
     "Deck outline": "deck-outline.md",
 }
-
-st.set_page_config(page_title="Customer Risk & Playbook", layout="wide")
 
 
 def z_score(col: pd.Series) -> pd.Series:

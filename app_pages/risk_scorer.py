@@ -1,13 +1,13 @@
 """
-Risk scorer: single-customer lookup, the live-demo tool (workstream C).
+Risk scorer page: single-customer lookup, the live-demo tool (workstream C).
 
 Not part of the graded submission (the brief is deck/PDF only), but ready
-to demo live in the 8-minute slot if this reaches heats. Unlike
-dashboard/app.py (internal exploration, exports charts, never shown live),
+to demo live in the 8-minute slot if this reaches heats. Unlike the
+Dashboard page (internal exploration, exports charts, never shown live),
 this is built to be presentable: pick a customer, see the risk score,
 category, and recommended action on one screen.
 
-Run: .venv/bin/streamlit run tool/app.py
+Run: .venv/bin/streamlit run streamlit_app.py
 """
 from pathlib import Path
 
@@ -24,8 +24,6 @@ CATEGORY_COLOR = {
     "High-Value Disengaged": "#dc2626",
 }
 PEER_METRICS = ["Active Days", "Sessions", "Product Actions", "Collaborators", "Integrations Used"]
-
-st.set_page_config(page_title="Risk Scorer", layout="wide")
 
 
 @st.cache_data

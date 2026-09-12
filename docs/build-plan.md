@@ -128,8 +128,10 @@ computes the engagement composite, the peer-group comparison, the risk
 score, the tenure and embeddedness modifiers, and the four categories, and
 writes `analysis/customer_risk.csv` and `analysis/cleaned_tickets.csv`.
 
-`dashboard/app.py` is the internal exploration tool: charts get exported
-from here into the deck, and it's never demoed live.
+`streamlit_app.py` runs the combined app (`app_pages/dashboard.py` for
+exploration, `app_pages/risk_scorer.py` for the live-demo single-customer
+lookup). The dashboard exports charts for the deck and is never demoed live;
+the risk scorer is built to be presentable.
 
 `docs/findings-data-quality.md`, `docs/findings-additional-signals.md`,
 `docs/research-cs-playbook-actions.md`, and `docs/findings-summary.md` are
@@ -137,6 +139,5 @@ the audit trail and sources behind every claim above.
 
 ## What's not built yet
 
-The single-customer lookup tool (point 7). The actual slide deck. The
-business-impact framing that ties the category counts to what's at stake
+The actual slide deck. The business-impact framing that ties the category counts to what's at stake
 for Atlassian.
