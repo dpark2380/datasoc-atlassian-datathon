@@ -1,33 +1,44 @@
 """
-Build the customer engagement/risk view from the official datathon dataset.
+Build the customer risk/action view from the official datathon dataset.
 
 Full audit of what's real vs. noise in this dataset lives in
-docs/findings-data-quality.md (plain-language version) -- summary:
+docs/findings-data-quality.md and docs/findings-additional-signals.md
+(plain-language versions). Summary of what this pipeline relies on:
 
 REAL, used here:
   - product_usage.csv has genuine per-customer persistence (Jan-May 2023
     Active Days correlation = 0.82) and usage level tracks Plan Type
     cleanly (Free 5.3 -> Enterprise 11.5 avg active days/month).
   - Product also shows a real, moderate difference (Jira ~10.0 vs Loom
-    ~6.7 avg active days) -- kept as a secondary cut.
+    ~6.7 avg active days) -- used as part of the peer group, not just a
+    secondary cut.
+  - Integrations Used scales with Plan Type even more sharply than Active
+    Days (Free 1.14 -> Enterprise 5.99, ~5x spread vs ~2x for Active
+    Days) -- weighted higher than Collaborators in the embeddedness score.
+  - Account Created Date has no real "new customer" cohort relative to the
+    2023 usage window (everyone is 1.5-4.5 years old by then), so tenure
+    is used as a RELATIVE quartile within the customer base, never as an
+    absolute "just onboarded" claim.
 
 NOT REAL, not used as a signal (kept only as descriptive/operational
 context where shown at all):
-  - Customer Satisfaction Rating: statistically random.
-  - Ticket Type / Priority / Channel: near-uniform distributions --
-    independently randomly assigned per ticket.
-  - Resolution Hours: mean ~0, often negative -- timestamps are not
-    coherent, not usable as a duration.
+  - Customer Satisfaction Rating, Customer Age, Customer Gender: all
+    statistically random against everything tested.
+  - Ticket Type / Subject / Priority / Channel: near-uniform distributions
+    -- independently randomly assigned per ticket.
+  - Resolution Hours, Ticket Status: incoherent timestamps / no
+    relationship to usage.
   - Ticket volume per customer: flat across every segment (~1.0-1.02
-    tickets/customer everywhere) -- tickets are not linked to who the
-    customer is.
-  - No free-text field exists in this dataset at all (no Ticket
-    Description; Resolution is synthetic filler, not real language).
+    tickets/customer everywhere; every customer has at least one ticket).
+  - No free-text field exists in this dataset at all.
   - Industry / Region / Company Size: flat, no relationship to usage.
+  - One narrow exception: a ticket's Product Purchased field is 100%
+    consistent with the customer's real product_usage.csv rows -- kept
+    only as a validity note, not used as a signal.
 
 Run: .venv/bin/python analysis/eda.py
 Writes: analysis/cleaned_tickets.csv   (ticket-level, descriptive only)
-        analysis/customer_engagement.csv  (customer-level, the real signal)
+        analysis/customer_risk.csv     (customer-level, the real signal)
 """
 from pathlib import Path
 
@@ -35,9 +46,35 @@ import pandas as pd
 
 DATA_DIR = Path(__file__).parent.parent / "references" / "Dataset"
 OUT_TICKETS = Path(__file__).parent / "cleaned_tickets.csv"
-OUT_CUSTOMER_ENGAGEMENT = Path(__file__).parent / "customer_engagement.csv"
+OUT_CUSTOMER_RISK = Path(__file__).parent / "customer_risk.csv"
 
-USAGE_METRICS = ["Active Days", "Sessions", "Product Actions", "Collaborators", "Integrations Used"]
+ENGAGEMENT_METRICS = ["Active Days", "Sessions", "Product Actions"]
+# Integrations Used weighted 2x Collaborators -- confirmed sharper tier
+# signal (~5x spread Free->Enterprise vs ~2x for Collaborators).
+EMBEDDEDNESS_WEIGHTS = {"Collaborators": 1, "Integrations Used": 2}
+TIER_VALUE = {"Free": 0.0, "Standard": 1 / 3, "Premium": 2 / 3, "Enterprise": 1.0}
+USAGE_SNAPSHOT_DATE = pd.Timestamp("2023-05-31")  # end of the product_usage window
+
+PLAYBOOK_ACTIONS = {
+    "Monitor Only": "No action -- track only.",
+    "New & Struggling": (
+        "Milestone-tracked onboarding review: named CSM owner runs a structured "
+        "adoption session scoped to this account's unused workflows, checked "
+        "against a 30/60/90-day milestone list (Gainsight onboarding model)."
+    ),
+    "High-Value Disengaged": (
+        "Executive Business Review: quarterly exec-to-exec review scoped to this "
+        "account's actual ROI/adoption data, jointly owned by the CSM and account "
+        "leadership, logged via Jira Product Discovery (ChurnZero/Gainsight QBR "
+        "model; Atlassian's own CS team already uses this tool for triage)."
+    ),
+    "Established & Declining": (
+        "Automated feature-specific play: email naming the exact underused "
+        "feature and its value, an in-app nudge 1-2 days later, and a "
+        "complimentary short training session if usage doesn't recover "
+        "(ChurnZero low/mid-touch adoption play)."
+    ),
+}
 
 
 def load_raw() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -71,23 +108,84 @@ def ticket_count_per_customer(tickets: pd.DataFrame) -> pd.DataFrame:
 
 
 def customer_usage_summary(usage: pd.DataFrame) -> pd.DataFrame:
-    """Average usage metrics per customer across their 5-month history."""
-    return usage.groupby("Customer ID")[USAGE_METRICS].mean().reset_index()
+    """Average usage metrics per customer across their 5-month history, plus
+    their primary product (the one with the most total active days -- for
+    the 98.6% of customers with only one product this is just that product)."""
+    metrics = ENGAGEMENT_METRICS + list(EMBEDDEDNESS_WEIGHTS)
+    avg = usage.groupby("Customer ID")[metrics].mean().reset_index()
+
+    totals = usage.groupby(["Customer ID", "Product"])["Active Days"].sum().reset_index()
+    primary = totals.loc[totals.groupby("Customer ID")["Active Days"].idxmax(), ["Customer ID", "Product"]]
+    primary = primary.rename(columns={"Product": "Primary Product"})
+
+    return avg.merge(primary, on="Customer ID", how="left")
 
 
-def build_customer_engagement(customers: pd.DataFrame, usage_summary: pd.DataFrame, ticket_counts: pd.DataFrame) -> pd.DataFrame:
+def percentile_within_group(df: pd.DataFrame, value_col: str, group_cols: list[str]) -> pd.Series:
+    return df.groupby(group_cols)[value_col].rank(pct=True) * 100
+
+
+def build_customer_risk(customers: pd.DataFrame, usage_summary: pd.DataFrame, ticket_counts: pd.DataFrame) -> pd.DataFrame:
     df = customers.merge(usage_summary, on="Customer ID", how="left")
     df = df.merge(ticket_counts, on="Customer ID", how="left")
     df["Ticket Count"] = df["Ticket Count"].fillna(0)
 
-    # Underengaged = bottom quartile of Active Days within the customer's
-    # OWN plan-tier peer group. This is the one real, defensible risk signal
-    # in the dataset: usage genuinely tracks plan tier, so a customer well
-    # below their tier's norm is anomalous relative to real peers, not
-    # relative to a global average that mixes tiers with very different
-    # baselines.
-    tier_cutoff = df.groupby("Plan Type")["Active Days"].transform(lambda s: s.quantile(0.25))
-    df["Underengaged"] = df["Active Days"] < tier_cutoff
+    # Engagement composite: Active Days, Sessions, Product Actions only.
+    # Embeddedness (Collaborators, Integrations Used) is kept OUT of this
+    # composite deliberately -- see docs/findings-additional-signals.md.
+    # Folding embeddedness into the same score would let a well-integrated
+    # but declining account cancel out its own risk, which contradicts the
+    # decision that embeddedness should RAISE urgency, not hide disengagement.
+    def normalise(col: pd.Series) -> pd.Series:
+        filled = col.fillna(col.median())
+        span = filled.max() - filled.min()
+        return (filled - filled.min()) / span if span else filled * 0
+
+    df["Engagement Composite"] = pd.concat([normalise(df[m]) for m in ENGAGEMENT_METRICS], axis=1).mean(axis=1)
+
+    # At Risk / disengagement severity: percentile within the customer's own
+    # Plan Type x Primary Product peer group -- both are confirmed real,
+    # different baselines (Free vs Enterprise, Jira vs Loom), so comparing
+    # a customer only to their real peers avoids penalising accounts on
+    # naturally lower-touch tiers/products.
+    df["Engagement Percentile"] = percentile_within_group(df, "Engagement Composite", ["Plan Type", "Primary Product"])
+    df["At Risk"] = df["Engagement Percentile"] <= 25
+    disengagement_severity = 100 - df["Engagement Percentile"]
+
+    # Embeddedness: weighted combination of Collaborators + Integrations Used,
+    # expressed as a percentile so it combines cleanly with the tier weight.
+    weighted_embeddedness = sum(df[m] * w for m, w in EMBEDDEDNESS_WEIGHTS.items())
+    df["Embeddedness Percentile"] = weighted_embeddedness.rank(pct=True) * 100
+
+    # Risk Score: disengagement severity scaled up by an urgency multiplier
+    # from account value (plan tier) and embeddedness -- both confirmed to
+    # matter for how much it costs to lose this account, per Q3/Q10.
+    tier_weight = df["Plan Type"].map(TIER_VALUE).fillna(0)
+    embeddedness_weight = df["Embeddedness Percentile"] / 100
+    urgency_multiplier = 1 + 0.3 * tier_weight + 0.3 * embeddedness_weight
+    df["Risk Score"] = (disengagement_severity * urgency_multiplier).clip(upper=100).round(1)
+
+    # Relative tenure -- see module docstring: no absolute "new" cohort
+    # exists relative to the 2023 usage window, so tenure is a quartile
+    # within the customer base, not a real-world onboarding claim.
+    account_created = pd.to_datetime(df["Account Created Date"])
+    account_age_days = (USAGE_SNAPSHOT_DATE - account_created).dt.days
+    newer_cutoff = account_age_days.quantile(0.25)
+    df["Recently Acquired (relative)"] = account_age_days <= newer_cutoff
+
+    high_value = df["Plan Type"].isin(["Enterprise", "Premium"]) | (df["Embeddedness Percentile"] >= 75)
+
+    def categorise(row) -> str:
+        if not row["At Risk"]:
+            return "Monitor Only"
+        if row["Recently Acquired (relative)"]:
+            return "New & Struggling"
+        if high_value.loc[row.name]:
+            return "High-Value Disengaged"
+        return "Established & Declining"
+
+    df["Risk Category"] = df.apply(categorise, axis=1)
+    df["Recommended Action"] = df["Risk Category"].map(PLAYBOOK_ACTIONS)
 
     return df
 
@@ -101,17 +199,17 @@ def main() -> None:
 
     usage_summary = customer_usage_summary(usage)
     ticket_counts = ticket_count_per_customer(tickets)
-    engagement = build_customer_engagement(customers, usage_summary, ticket_counts)
-    engagement.to_csv(OUT_CUSTOMER_ENGAGEMENT, index=False)
+    risk = build_customer_risk(customers, usage_summary, ticket_counts)
+    risk.to_csv(OUT_CUSTOMER_RISK, index=False)
 
     print(f"Tickets (descriptive only): {len(tickets)} rows -> {OUT_TICKETS}")
-    print(f"Customer engagement: {len(engagement)} rows -> {OUT_CUSTOMER_ENGAGEMENT}")
+    print(f"Customer risk: {len(risk)} rows -> {OUT_CUSTOMER_RISK}")
     print()
     print("Active Days by Plan Type:")
-    print(engagement.groupby("Plan Type")["Active Days"].mean().sort_values())
+    print(risk.groupby("Plan Type")["Active Days"].mean().sort_values())
     print()
-    n_under = engagement["Underengaged"].sum()
-    print(f"Underengaged customers (bottom quartile within their plan tier): {n_under} / {len(engagement)} ({n_under/len(engagement):.1%})")
+    print("Risk Category counts:")
+    print(risk["Risk Category"].value_counts())
 
 
 if __name__ == "__main__":

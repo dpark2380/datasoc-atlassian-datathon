@@ -6,4 +6,4 @@ graphify-out/
 __pycache__/
 *.pyc
 analysis/cleaned_tickets.csv
-analysis/customer_engagement.csv
+analysis/customer_risk.csv

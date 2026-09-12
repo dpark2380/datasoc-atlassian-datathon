@@ -1,20 +1,88 @@
-# Deck outline (structure only — fill in once tomorrow's prompt/rubric lands)
+# Deck outline
 
 Challenge statement (given): "How can Atlassian better leverage raw support
 ticket data to understand customer experiences and sentiment, and ultimately
 protect business value?"
 
-1. **Title / problem framing** — the challenge statement, one line on why it matters (support tickets = leading indicator of churn/expansion risk).
-2. **Approach** — data → structured cuts + sentiment layer → risk scoring → recommendations. One slide, not a methodology essay.
-3. **Data reality check** (own this, don't hide it) — what the data can and can't tell us. If CSAT turns out uncorrelated with anything (as in the placeholder dataset), that's a finding, not a failure: "Atlassian can't triage what it doesn't correlate."
-4. **Findings — operational** — volume/resolution-time patterns by ticket type, priority, channel, product. Where is time/effort actually going.
-5. **Findings — sentiment/experience** — what the text signal adds beyond the structured fields (caveated: directional, not validated ground truth in the placeholder data).
-6. **The at-risk lens** — the risk-scorer tool (workstream C) as the "so what": here's a ticket, here's why it's flagged, here's the suggested action.
-7. **Business impact** — translate #4-6 into $ / retention / effort terms. This is the slide judges actually remember — needs real rubric-informed framing tomorrow.
-8. **Recommendations** — 2-3 concrete, checkable actions (not "leverage AI to unlock insights" — see references/vibe-coded-tells.docx, say the specific thing).
-9. **Demo** — live walkthrough of the risk-scorer tool + dashboard.
+Story: support ticket data in this dataset turns out to carry no real
+signal (see `findings-data-quality.md`), so the risk model is built on the
+part of the data that is real: how much a customer actually uses Jira,
+Confluence, Trello, Bitbucket, or Loom, compared to their own peers.
+Framing: flag accounts at risk before they churn, not after.
+
+## 1. Title and problem framing
+
+State the challenge statement, then one line on why it matters: support
+usage is a leading indicator of renewal and expansion risk, and Atlassian
+can act on it months before a renewal conversation happens.
+
+## 2. The data reality check
+
+Own this early, since it's the credibility foundation for everything after
+it. We tested every ticket field (satisfaction rating, type, priority,
+channel, resolution time, ticket subject, customer age and gender) against
+every other field in the dataset. All of it is flat. There's also no
+customer-written text in this dataset to score sentiment from. We're
+telling Atlassian this directly rather than presenting a correlation that
+doesn't hold up. Source: `findings-data-quality.md` and
+`findings-additional-signals.md`.
+
+## 3. The headline finding
+
+Usage is real, stable, and scales with what a customer pays for: Free
+customers average 5.3 active days a month, Enterprise customers average
+11.5. It also scales with which product they use, from about 6.7 active
+days on Loom to about 10.0 on Jira. Show both cuts as the headline chart
+pair.
+
+## 4. The risk model
+
+A customer is at risk when their usage sits in the bottom quarter compared
+to peers on the same plan and the same product, so a Free/Loom customer
+isn't unfairly flagged against an Enterprise/Jira baseline. Each at-risk
+customer gets a risk score from 0 to 100 (higher for higher-value, more
+embedded accounts) and one of four categories:
+
+| Category | Count |
+|----|----|
+| Monitor Only | 6,248 |
+| New & Struggling | 519 |
+| Established & Declining | 893 |
+| High-Value Disengaged | 660 |
+
+## 5. The recommendation
+
+One specific, sourced action per category, not a generic email:
+
+- New & Struggling gets a milestone-tracked onboarding review, reusing
+  Atlassian's own published Jira Adoption Guide as session material.
+- High-Value Disengaged gets a quarterly executive business review, logged
+  through Jira Product Discovery, which Atlassian's own Customer Success
+  team already uses for account prioritization.
+- Established & Declining gets an automated, feature-specific play (name
+  the unused feature, email, in-app nudge, then a short training offer),
+  costing no CSM time unless it fails to move usage.
+
+Source and citations: `research-cs-playbook-actions.md`.
+
+## 6. The tool
+
+Live demo: pick a customer, see their risk score, their category, and the
+recommended action in one screen. Built in Streamlit, not part of the
+graded submission, but ready to show live if this reaches heats.
+
+## 7. The honest gap, and the close
+
+Real customer health scores (Gainsight, ChurnZero) combine usage with
+support ticket sentiment and survey data. Ours only has usage, because the
+ticket data here can't support a sentiment signal honestly. Close on what
+Atlassian would need to capture (real timestamps, actual customer text,
+tickets linked to account context) for that gap to close, which is itself
+a concrete, actionable recommendation.
 
 ## Style rule for every slide
-See `docs/agents/writing-style.md`. Say the specific, checkable thing. E.g.
-not "sentiment analysis reveals hidden customer pain points" but "14% of
-Critical tickets carry negative sentiment and take 2x longer to close."
+
+See `docs/agents/writing-style.md`. Say the specific, checkable thing. For
+example, not "sentiment analysis reveals hidden customer pain points" but
+"the ticket data in this dataset is statistically random, and here's what
+we built instead."
