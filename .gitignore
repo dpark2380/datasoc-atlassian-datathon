@@ -3,3 +3,7 @@ AGENTS.md
 docs/agents/
 graphify-out/
 .venv/
+__pycache__/
+*.pyc
+analysis/cleaned_tickets.csv
+analysis/customer_engagement.csv

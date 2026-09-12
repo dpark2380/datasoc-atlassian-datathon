@@ -1,10 +1,14 @@
 """
-EDA dashboard (workstream B). Run: .venv/bin/streamlit run dashboard/app.py
+EDA dashboard (workstream B) -- internal exploration tool. Export charts
+from here into the deck; this app itself is never demoed live (submission
+is deck/PDF only).
 
-Reads analysis/cleaned_tickets.csv (placeholder dataset). Swap the CSV_PATH
-constant once the official dataset lands -- everything below is written
-against column names, not the specific dataset, so it should mostly survive
-a swap as long as columns are renamed to match.
+Run: .venv/bin/streamlit run dashboard/app.py
+
+Reads analysis/customer_engagement.csv and analysis/cleaned_tickets.csv,
+both produced by analysis/eda.py. See docs/findings-data-quality.md for why
+the two files are treated so differently: engagement is real signal,
+tickets are descriptive-only.
 """
 from pathlib import Path
 
@@ -12,107 +16,90 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-CSV_PATH = Path(__file__).parent.parent / "analysis" / "cleaned_tickets.csv"
+ENGAGEMENT_CSV = Path(__file__).parent.parent / "analysis" / "customer_engagement.csv"
+TICKETS_CSV = Path(__file__).parent.parent / "analysis" / "cleaned_tickets.csv"
+USAGE_CSV = Path(__file__).parent.parent / "references" / "Dataset" / "product_usage.csv"
 
-st.set_page_config(page_title="Support Ticket EDA", layout="wide")
+PLAN_ORDER = ["Free", "Standard", "Premium", "Enterprise"]
+
+st.set_page_config(page_title="Customer Engagement & Risk", layout="wide")
 
 
 @st.cache_data
-def load_data(path: Path) -> pd.DataFrame:
-    df = pd.read_csv(path)
-    df["Ticket Priority"] = pd.Categorical(
-        df["Ticket Priority"], categories=["Low", "Medium", "High", "Critical"], ordered=True
-    )
-    return df
+def load_data():
+    engagement = pd.read_csv(ENGAGEMENT_CSV)
+    engagement["Plan Type"] = pd.Categorical(engagement["Plan Type"], categories=PLAN_ORDER, ordered=True)
+    tickets = pd.read_csv(TICKETS_CSV)
+    usage = pd.read_csv(USAGE_CSV)
+    return engagement, tickets, usage
 
 
-df = load_data(CSV_PATH)
+engagement, tickets, usage = load_data()
 
-st.title("Support Ticket EDA")
+st.title("Customer Engagement & Risk")
 st.caption(
-    "PLACEHOLDER DATASET pending tomorrow's official prompt/data. "
-    "Layout and cuts below are dataset-agnostic; numbers will change."
+    "Internal analysis tool -- exports charts for the deck, not demoed live. "
+    "See docs/findings-data-quality.md for the full data audit."
 )
 
-# --- Filters -----------------------------------------------------------
 with st.sidebar:
     st.header("Filters")
-    priorities = st.multiselect(
-        "Priority", options=df["Ticket Priority"].cat.categories.tolist(),
-        default=df["Ticket Priority"].cat.categories.tolist(),
-    )
-    channels = st.multiselect(
-        "Channel", options=sorted(df["Ticket Channel"].unique()),
-        default=sorted(df["Ticket Channel"].unique()),
-    )
+    plans = st.multiselect("Plan Type", options=PLAN_ORDER, default=PLAN_ORDER)
 
-filtered = df[df["Ticket Priority"].isin(priorities) & df["Ticket Channel"].isin(channels)]
+filtered = engagement[engagement["Plan Type"].isin(plans)]
 
 # --- KPI row -------------------------------------------------------------
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Tickets", f"{len(filtered):,}")
-col2.metric("At-risk tickets", f"{filtered['At Risk'].sum():,}", f"{filtered['At Risk'].mean():.1%}")
-col3.metric("Avg resolution (hrs)", f"{filtered['Resolution Hours'].mean():.1f}")
-avg_csat = filtered["Customer Satisfaction Rating"].mean()
-col4.metric("Avg CSAT (closed only)", f"{avg_csat:.2f}" if pd.notna(avg_csat) else "n/a")
+col1.metric("Customers", f"{len(filtered):,}")
+col2.metric("Underengaged", f"{filtered['Underengaged'].sum():,}", f"{filtered['Underengaged'].mean():.1%}")
+col3.metric("Avg active days/month", f"{filtered['Active Days'].mean():.1f}")
+col4.metric("Avg sessions/month", f"{filtered['Sessions'].mean():.1f}")
 
 st.divider()
 
-# --- Volume & priority ---------------------------------------------------
+# --- The headline finding --------------------------------------------------
+st.subheader("Usage scales with plan tier (the real signal)")
+st.caption("Active Days by Plan Type -- this is genuine, not a data artifact (see findings doc).")
+means = engagement.groupby("Plan Type", observed=True)["Active Days"].mean().reindex(PLAN_ORDER).reset_index()
+fig = px.bar(means, x="Plan Type", y="Active Days")
+st.plotly_chart(fig, use_container_width=True)
+
 c1, c2 = st.columns(2)
 with c1:
-    st.subheader("Ticket volume by type")
-    fig = px.bar(filtered["Ticket Type"].value_counts().reset_index(), x="Ticket Type", y="count")
+    st.subheader("Underengaged customers by plan")
+    st.caption("Bottom 25% of Active Days within each customer's own plan tier.")
+    under = filtered.groupby("Plan Type", observed=True)["Underengaged"].agg(["sum", "mean"]).reindex(PLAN_ORDER).reset_index()
+    fig = px.bar(under, x="Plan Type", y="sum", labels={"sum": "Underengaged customers"})
     st.plotly_chart(fig, use_container_width=True)
 with c2:
-    st.subheader("Ticket volume by priority")
-    fig = px.bar(
-        filtered["Ticket Priority"].value_counts().reindex(df["Ticket Priority"].cat.categories).reset_index(),
-        x="Ticket Priority", y="count",
-    )
+    st.subheader("Usage by product")
+    st.caption("Secondary real cut -- Jira/daily-use tools show higher engagement than Loom.")
+    by_product = usage.groupby("Product")["Active Days"].mean().sort_values().reset_index()
+    fig = px.bar(by_product, x="Product", y="Active Days")
     st.plotly_chart(fig, use_container_width=True)
 
-# --- Resolution time -------------------------------------------------------
-st.subheader("Resolution time by priority")
-fig = px.box(filtered.dropna(subset=["Resolution Hours"]), x="Ticket Priority", y="Resolution Hours")
-st.plotly_chart(fig, use_container_width=True)
-
-# --- Sentiment -------------------------------------------------------------
-c3, c4 = st.columns(2)
-with c3:
-    st.subheader("Sentiment distribution")
-    fig = px.pie(filtered, names="Sentiment Label")
-    st.plotly_chart(fig, use_container_width=True)
-with c4:
-    st.subheader("CSAT distribution (closed tickets)")
-    csat = filtered.dropna(subset=["Customer Satisfaction Rating"])
-    fig = px.histogram(csat, x="Customer Satisfaction Rating", nbins=5)
-    st.plotly_chart(fig, use_container_width=True)
-
-# --- The honesty check, front and center ------------------------------
+# --- Underengaged customer table -----------------------------------------
 st.divider()
-st.subheader("Does anything correlate with CSAT?")
-st.caption(
-    "This is the sanity check every claim in the deck needs to pass. "
-    "In the placeholder dataset, CSAT is statistically random -- roughly "
-    "uniform across every field we tested. Rerun analysis/sanity_check.py "
-    "on the real dataset before building any 'X predicts satisfaction' slide."
-)
-group_col = st.selectbox(
-    "Group CSAT by", ["Ticket Priority", "Ticket Channel", "Ticket Type", "Sentiment Label"]
-)
-means = filtered.groupby(group_col, observed=True)["Customer Satisfaction Rating"].mean().reset_index()
-fig = px.bar(means, x=group_col, y="Customer Satisfaction Rating", range_y=[0, 5])
-st.plotly_chart(fig, use_container_width=True)
-
-# --- At-risk table -----------------------------------------------------
-st.divider()
-st.subheader("At-risk tickets (sample)")
-st.caption("Flag = High/Critical priority + slow-or-unresolved + (negative sentiment or CSAT <= 2)")
+st.subheader("Underengaged customers (sample)")
 st.dataframe(
-    filtered[filtered["At Risk"]][
-        ["Ticket ID", "Ticket Type", "Ticket Priority", "Ticket Channel",
-         "Resolution Hours", "Sentiment Label", "Customer Satisfaction Rating"]
+    filtered[filtered["Underengaged"]][
+        ["Customer ID", "Plan Type", "Industry", "Region", "Company Size", "Active Days", "Sessions", "Ticket Count"]
     ].head(50),
     use_container_width=True,
 )
+
+# --- Ticket data: descriptive only, clearly labeled ------------------------
+st.divider()
+st.subheader("Support ticket data (descriptive only -- not predictive)")
+st.caption(
+    "Ticket Type/Priority/Channel/Satisfaction are confirmed random in this dataset "
+    "(near-zero spread across every field we tested -- see docs/findings-data-quality.md). "
+    "These charts show raw operational volume, not a driver of risk."
+)
+c3, c4 = st.columns(2)
+with c3:
+    fig = px.bar(tickets["Ticket Type"].value_counts().reset_index(), x="Ticket Type", y="count")
+    st.plotly_chart(fig, use_container_width=True)
+with c4:
+    fig = px.bar(tickets["Ticket Channel"].value_counts().reset_index(), x="Ticket Channel", y="count")
+    st.plotly_chart(fig, use_container_width=True)

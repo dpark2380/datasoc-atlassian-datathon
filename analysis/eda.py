@@ -1,97 +1,117 @@
 """
-Clean the raw customer-support-ticket dataset and engineer features for
-the EDA dashboard and the risk-scorer prototype.
+Build the customer engagement/risk view from the official datathon dataset.
+
+Full audit of what's real vs. noise in this dataset lives in
+docs/findings-data-quality.md (plain-language version) -- summary:
+
+REAL, used here:
+  - product_usage.csv has genuine per-customer persistence (Jan-May 2023
+    Active Days correlation = 0.82) and usage level tracks Plan Type
+    cleanly (Free 5.3 -> Enterprise 11.5 avg active days/month).
+  - Product also shows a real, moderate difference (Jira ~10.0 vs Loom
+    ~6.7 avg active days) -- kept as a secondary cut.
+
+NOT REAL, not used as a signal (kept only as descriptive/operational
+context where shown at all):
+  - Customer Satisfaction Rating: statistically random.
+  - Ticket Type / Priority / Channel: near-uniform distributions --
+    independently randomly assigned per ticket.
+  - Resolution Hours: mean ~0, often negative -- timestamps are not
+    coherent, not usable as a duration.
+  - Ticket volume per customer: flat across every segment (~1.0-1.02
+    tickets/customer everywhere) -- tickets are not linked to who the
+    customer is.
+  - No free-text field exists in this dataset at all (no Ticket
+    Description; Resolution is synthetic filler, not real language).
+  - Industry / Region / Company Size: flat, no relationship to usage.
 
 Run: .venv/bin/python analysis/eda.py
-Writes: analysis/cleaned_tickets.csv
+Writes: analysis/cleaned_tickets.csv   (ticket-level, descriptive only)
+        analysis/customer_engagement.csv  (customer-level, the real signal)
 """
-import re
 from pathlib import Path
 
-import kagglehub
 import pandas as pd
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
-OUT_PATH = Path(__file__).parent / "cleaned_tickets.csv"
+DATA_DIR = Path(__file__).parent.parent / "references" / "Dataset"
+OUT_TICKETS = Path(__file__).parent / "cleaned_tickets.csv"
+OUT_CUSTOMER_ENGAGEMENT = Path(__file__).parent / "customer_engagement.csv"
 
-
-def load_raw() -> pd.DataFrame:
-    dataset_dir = kagglehub.dataset_download("suraj520/customer-support-ticket-dataset")
-    csv_path = next(Path(dataset_dir).glob("*.csv"))
-    return pd.read_csv(csv_path)
+USAGE_METRICS = ["Active Days", "Sessions", "Product Actions", "Collaborators", "Integrations Used"]
 
 
-def clean(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
+def load_raw() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    tickets = pd.read_csv(DATA_DIR / "customer_support_tickets.csv")
+    customers = pd.read_csv(DATA_DIR / "customers.csv")
+    usage = pd.read_csv(DATA_DIR / "product_usage.csv")
+    return tickets, customers, usage
 
-    # The generator dataset never filled in the {product_purchased} template.
-    # Strip it so sentiment scoring isn't thrown by literal curly braces.
-    df["Ticket Description"] = df["Ticket Description"].str.replace(
-        r"\{product_purchased\}", "the product", regex=True
-    )
 
-    for col in ("First Response Time", "Time to Resolution", "Date of Purchase"):
-        df[col] = pd.to_datetime(df[col], errors="coerce")
-
-    # Only meaningful for tickets that actually have both timestamps.
-    df["Resolution Hours"] = (
-        df["Time to Resolution"] - df["First Response Time"]
-    ).dt.total_seconds() / 3600
-    df.loc[df["Resolution Hours"] < 0, "Resolution Hours"] = pd.NA
-
+def clean_tickets(tickets: pd.DataFrame) -> pd.DataFrame:
+    """Descriptive/operational cleaning only -- see module docstring for why
+    none of these fields are used as a predictive signal."""
+    df = tickets.copy()
+    df["Date of Purchase"] = pd.to_datetime(df["Date of Purchase"], format="%d-%m-%Y", errors="coerce")
+    df["First Response Time"] = pd.to_datetime(df["First Response Time"], format="%d-%m-%Y %H:%M", errors="coerce")
+    df["Time to Resolution"] = pd.to_datetime(df["Time to Resolution"], format="%d-%m-%Y %H:%M", errors="coerce")
     df["Ticket Priority"] = pd.Categorical(
         df["Ticket Priority"], categories=["Low", "Medium", "High", "Critical"], ordered=True
     )
-
     return df
 
 
-def score_sentiment(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Directional sentiment only. This dataset's free text is templated /
-    synthetic filler (see references discussion) -- do not present this as
-    ground-truth NLP, present it as a proxy signal layered on top of the
-    structured drivers (priority, channel, resolution time, satisfaction).
-    """
-    df = df.copy()
-    analyzer = SentimentIntensityAnalyzer()
-    df["Sentiment Compound"] = df["Ticket Description"].fillna("").apply(
-        lambda text: analyzer.polarity_scores(text)["compound"]
-    )
-    df["Sentiment Label"] = pd.cut(
-        df["Sentiment Compound"],
-        bins=[-1.01, -0.05, 0.05, 1.01],
-        labels=["Negative", "Neutral", "Positive"],
-    )
-    return df
+def join_customer_id(tickets: pd.DataFrame, customers: pd.DataFrame) -> pd.DataFrame:
+    """Tickets carry no Customer ID -- join on email (verified 1:1, 100% match)."""
+    return tickets.merge(customers[["Customer ID", "Customer Email"]], on="Customer Email", how="left")
 
 
-def business_risk_flag(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Simple, explainable rule-based flag for the prototype tool (workstream C):
-    a ticket is "at risk" if it combines high urgency, slow/no resolution,
-    and negative sentiment or low satisfaction -- the combination most likely
-    to precede churn, not any single field in isolation.
-    """
-    df = df.copy()
-    high_priority = df["Ticket Priority"].isin(["High", "Critical"])
-    slow_or_unresolved = (df["Resolution Hours"].isna()) | (df["Resolution Hours"] > df["Resolution Hours"].median())
-    unhappy = (df["Sentiment Label"] == "Negative") | (df["Customer Satisfaction Rating"] <= 2)
+def ticket_count_per_customer(tickets: pd.DataFrame) -> pd.DataFrame:
+    """Descriptive only -- confirmed flat across every segment, not a risk signal."""
+    return tickets.groupby("Customer ID").size().rename("Ticket Count").reset_index()
 
-    df["At Risk"] = high_priority & slow_or_unresolved & unhappy
+
+def customer_usage_summary(usage: pd.DataFrame) -> pd.DataFrame:
+    """Average usage metrics per customer across their 5-month history."""
+    return usage.groupby("Customer ID")[USAGE_METRICS].mean().reset_index()
+
+
+def build_customer_engagement(customers: pd.DataFrame, usage_summary: pd.DataFrame, ticket_counts: pd.DataFrame) -> pd.DataFrame:
+    df = customers.merge(usage_summary, on="Customer ID", how="left")
+    df = df.merge(ticket_counts, on="Customer ID", how="left")
+    df["Ticket Count"] = df["Ticket Count"].fillna(0)
+
+    # Underengaged = bottom quartile of Active Days within the customer's
+    # OWN plan-tier peer group. This is the one real, defensible risk signal
+    # in the dataset: usage genuinely tracks plan tier, so a customer well
+    # below their tier's norm is anomalous relative to real peers, not
+    # relative to a global average that mixes tiers with very different
+    # baselines.
+    tier_cutoff = df.groupby("Plan Type")["Active Days"].transform(lambda s: s.quantile(0.25))
+    df["Underengaged"] = df["Active Days"] < tier_cutoff
+
     return df
 
 
 def main() -> None:
-    raw = load_raw()
-    df = clean(raw)
-    df = score_sentiment(df)
-    df = business_risk_flag(df)
-    df.to_csv(OUT_PATH, index=False)
+    tickets_raw, customers, usage = load_raw()
 
-    print(f"Rows: {len(df)}")
-    print(f"At-risk tickets: {df['At Risk'].sum()} ({df['At Risk'].mean():.1%})")
-    print(f"Wrote {OUT_PATH}")
+    tickets = clean_tickets(tickets_raw)
+    tickets = join_customer_id(tickets, customers)
+    tickets.to_csv(OUT_TICKETS, index=False)
+
+    usage_summary = customer_usage_summary(usage)
+    ticket_counts = ticket_count_per_customer(tickets)
+    engagement = build_customer_engagement(customers, usage_summary, ticket_counts)
+    engagement.to_csv(OUT_CUSTOMER_ENGAGEMENT, index=False)
+
+    print(f"Tickets (descriptive only): {len(tickets)} rows -> {OUT_TICKETS}")
+    print(f"Customer engagement: {len(engagement)} rows -> {OUT_CUSTOMER_ENGAGEMENT}")
+    print()
+    print("Active Days by Plan Type:")
+    print(engagement.groupby("Plan Type")["Active Days"].mean().sort_values())
+    print()
+    n_under = engagement["Underengaged"].sum()
+    print(f"Underengaged customers (bottom quartile within their plan tier): {n_under} / {len(engagement)} ({n_under/len(engagement):.1%})")
 
 
 if __name__ == "__main__":
