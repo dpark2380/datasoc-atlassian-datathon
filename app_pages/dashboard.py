@@ -288,6 +288,11 @@ with tab_segments:
     cat_by_cluster = pd.crosstab(risk["Risk Category"], risk["Usage Cluster (k=4)"], normalize="index")
 
     def top_two(category: str) -> str:
+        # Tolerate a category that isn't present rather than taking the whole
+        # page down: every tab body executes on each run, so one lookup error
+        # here would blank the entire dashboard.
+        if category not in cat_by_cluster.index:
+            return "not present in this data"
         top = cat_by_cluster.loc[category].sort_values(ascending=False)
         return f"{top.index[0]} ({top.iloc[0]:.0%}), {top.index[1]} ({top.iloc[1]:.0%})"
 

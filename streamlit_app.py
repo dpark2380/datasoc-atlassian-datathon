@@ -14,6 +14,7 @@ analysis/customer_risk.csv and analysis/cleaned_tickets.csv are generated
 output (gitignored) -- a fresh clone (e.g. Streamlit Community Cloud) won't
 have them, so they're built once here before either page loads.
 """
+import hashlib
 import sys
 from pathlib import Path
 
@@ -29,14 +30,26 @@ except ImportError:
 
 @st.cache_resource
 def ensure_pipeline_output() -> None:
+    """Regenerate the pipeline output whenever eda.py has changed since it was
+    last generated.
+
+    Keying on the hash of eda.py rather than on a specific column name catches
+    changes to the *values* as well as the schema. A previous version of this
+    check looked for a column in the header, which missed a rename of the risk
+    category labels: the schema was unchanged, so a stale file produced by an
+    older pipeline was kept and the app then crashed looking up a label that
+    no longer existed in it.
+    """
     risk_csv = ROOT / "analysis" / "customer_risk.csv"
-    if not risk_csv.exists():
-        eda.main()
+    stamp_file = ROOT / "analysis" / ".pipeline_stamp"
+    current = hashlib.sha256(Path(eda.__file__).read_bytes()).hexdigest()
+
+    previous = stamp_file.read_text(encoding="utf-8").strip() if stamp_file.exists() else None
+    if risk_csv.exists() and previous == current:
         return
-    with open(risk_csv, "r", encoding="utf-8") as f:
-        header = f.readline()
-    if "Usage Cluster (k=2)" not in header:
-        eda.main()
+
+    eda.main()
+    stamp_file.write_text(current, encoding="utf-8")
 
 
 st.set_page_config(page_title="Customer Risk & Playbook", layout="wide")
