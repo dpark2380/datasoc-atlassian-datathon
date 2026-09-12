@@ -81,7 +81,12 @@ def urgency_coefficient_sensitivity(df: pd.DataFrame) -> pd.DataFrame:
     checking rank correlation, and confirm Risk Category is unchanged."""
     at_risk = df[df["At Risk"]].copy()
     severity = 100 - at_risk["Engagement Percentile"]
-    tier_value = at_risk["Plan Type"].map({"Free": 0.0, "Standard": 1 / 3, "Premium": 2 / 3, "Enterprise": 1.0}).fillna(0)
+    tier_value = (
+        at_risk["Plan Type"].astype(str)
+        .map({"Free": 0.0, "Standard": 1 / 3, "Premium": 2 / 3, "Enterprise": 1.0})
+        .astype(float)
+        .fillna(0)
+    )
     embeddedness_weight = at_risk["Embeddedness Percentile"] / 100
 
     baseline_score = at_risk["Risk Score"]
