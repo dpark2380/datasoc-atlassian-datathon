@@ -94,10 +94,13 @@ peers = risk[(risk["Plan Type"] == row["Plan Type"]) & (risk["Primary Product"] 
 peer_median = peers[PEER_METRICS].median()
 
 fig = go.Figure()
-fig.add_trace(go.Bar(name="This customer", x=PEER_METRICS, y=[row[m] for m in PEER_METRICS]))
-fig.add_trace(go.Bar(name=f"Peer median ({row['Plan Type']} / {row['Primary Product']})", x=PEER_METRICS, y=peer_median.tolist()))
-fig.update_layout(barmode="group", legend=dict(orientation="h", y=1.15))
-st.plotly_chart(fig, use_container_width=True)
+fig.add_trace(go.Bar(name="This customer", x=PEER_METRICS, y=[row[m] for m in PEER_METRICS], marker_color="#0052CC"))
+fig.add_trace(go.Bar(
+    name=f"Peer median ({row['Plan Type']} / {row['Primary Product']})",
+    x=PEER_METRICS, y=peer_median.tolist(), marker_color="#B3D4FF",
+))
+fig.update_layout(barmode="group", legend=dict(orientation="h", y=1.15), template="plotly_white")
+st.plotly_chart(fig, width="stretch")
 
 st.caption(
     f"Engagement percentile within peer group: {row['Engagement Percentile']:.0f} "

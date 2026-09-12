@@ -99,13 +99,13 @@ def urgency_coefficient_sensitivity(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def bootstrap_flag_stability(df: pd.DataFrame, n_resamples: int = 20, frac: float = 0.8, seed: int = 42) -> float:
+def bootstrap_flag_stability(df: pd.DataFrame, n_resamples: int = 20, frac: float = 0.8, seed: int = 42) -> tuple[float, pd.Series]:
     """Resample 80% of customers within each Plan Type x Primary Product
     peer group, recompute the 25% cutoff on the resample, and check how
     often each customer's At Risk status agrees with the full-population
     baseline. A low agreement rate would mean the cutoff is noise-sensitive;
     a high rate means it's a stable statistic, not an artifact of exactly
-    this sample."""
+    this sample. Returns (mean agreement, per-customer agreement rate)."""
     rng = np.random.default_rng(seed)
     agreement_counts = pd.Series(0, index=df.index)
     times_sampled = pd.Series(0, index=df.index)
@@ -123,7 +123,8 @@ def bootstrap_flag_stability(df: pd.DataFrame, n_resamples: int = 20, frac: floa
         times_sampled.loc[sample.index] += 1
 
     sampled = times_sampled > 0
-    return (agreement_counts[sampled] / times_sampled[sampled]).mean()
+    per_customer = agreement_counts[sampled] / times_sampled[sampled]
+    return per_customer.mean(), per_customer
 
 
 def main() -> None:
@@ -132,7 +133,7 @@ def main() -> None:
     cutoff_table = cutoff_sensitivity(df)
     embeddedness_table = embeddedness_weight_sensitivity(df)
     urgency_table = urgency_coefficient_sensitivity(df)
-    stability = bootstrap_flag_stability(df)
+    stability, _ = bootstrap_flag_stability(df)
 
     print("Cutoff sensitivity:")
     print(cutoff_table.to_string(index=False))

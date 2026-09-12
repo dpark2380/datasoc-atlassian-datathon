@@ -59,13 +59,14 @@ TIER_VALUE = {"Free": 0.0, "Standard": 1 / 3, "Premium": 2 / 3, "Enterprise": 1.
 USAGE_SNAPSHOT_DATE = pd.Timestamp("2023-05-31")  # end of the product_usage window
 
 # Unsupervised segments, independent of the Risk Score above -- see
-# docs/findings-ml-segments.md for the full k=2..6 silhouette scan. k=2 has
-# the best silhouette score (0.40) but only recovers a single low/high usage
-# split; k=4 (0.30) separates usage volume from integration depth, which is
-# a genuinely different axis worth surfacing even at a lower silhouette
-# score. Both are reported, not just the one that "tells a better story."
+# docs/findings-ml-segments.md for the full k=2..6 silhouette scan and the
+# 0.63 correlation between usage volume and integration depth (why the k=4
+# scatter shows one continuous diagonal band, not 4 separated blobs). Both
+# k=2 (cleanest separation, silhouette 0.40, low/high usage only) and k=4
+# (silhouette 0.30, splits volume from depth, more actionable nuance but
+# with overlapping boundaries) are kept -- neither is "the" answer.
 CLUSTER_METRICS = ["Active Days", "Sessions", "Product Actions", "Collaborators", "Integrations Used"]
-N_CLUSTERS = 4
+CLUSTER_K_VALUES = [2, 4]
 # 5% contamination: a smaller, differently-defined set of unusual accounts,
 # not meant to reproduce the 25% quartile-based At Risk flag.
 ANOMALY_CONTAMINATION = 0.05
@@ -171,17 +172,29 @@ def label_usage_clusters(centroids: pd.DataFrame) -> dict[int, str]:
 def add_usage_clusters(df: pd.DataFrame) -> pd.DataFrame:
     """KMeans on standardised usage metrics -- discovers segments from the
     data itself, instead of the hand-picked Plan Type x Product grouping
-    used for the Risk Score. See docs/findings-ml-segments.md."""
+    used for the Risk Score. Computes every k in CLUSTER_K_VALUES (k=2 and
+    k=4 by default): k=2 is the cleaner separation, k=4 is more actionable
+    nuance with more overlap. Neither is hidden in favour of the other --
+    see docs/findings-ml-segments.md."""
     df = df.copy()
     features = df[CLUSTER_METRICS].fillna(df[CLUSTER_METRICS].median())
     X = StandardScaler().fit_transform(features)
 
-    km = KMeans(n_clusters=N_CLUSTERS, random_state=RANDOM_STATE, n_init=10).fit(X)
-    df["Usage Cluster ID"] = km.labels_
+    for k in CLUSTER_K_VALUES:
+        km = KMeans(n_clusters=k, random_state=RANDOM_STATE, n_init=10).fit(X)
+        id_col = f"Usage Cluster ID (k={k})"
+        label_col = f"Usage Cluster (k={k})"
+        df[id_col] = km.labels_
 
-    centroids = df.groupby("Usage Cluster ID")[CLUSTER_METRICS].mean()
-    labels = label_usage_clusters(centroids)
-    df["Usage Cluster"] = df["Usage Cluster ID"].map(labels)
+        centroids = df.groupby(id_col)[CLUSTER_METRICS].mean()
+        labels = label_usage_clusters(centroids)
+        df[label_col] = df[id_col].map(labels)
+
+    # Default/headline columns -- k=4, kept under the plain name for
+    # anything that doesn't care which k it's looking at (e.g. the
+    # risk-scorer tool's single-customer summary line).
+    df["Usage Cluster ID"] = df["Usage Cluster ID (k=4)"]
+    df["Usage Cluster"] = df["Usage Cluster (k=4)"]
     return df
 
 
