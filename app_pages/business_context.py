@@ -64,8 +64,10 @@ st.caption(
     "FY26 Form 10-K, filed 14 August 2026, customer metrics table. The same filing says Atlassian is "
     "\"focused on continuing to grow ... the number of customers with more than $10,000 in annualized "
     "recurring revenue from our Cloud offerings\", because it measures expansion within the existing base. "
-    "The Q4 FY26 letter adds that customers above $3M ARR grew more than 50% year on year and those above "
-    "$5M grew more than 70%, so the largest accounts are also the fastest growing."
+    "Separately, and on total ARR rather than Cloud ARR, the Q4 FY26 letter reports that customers above "
+    "$3M ARR grew more than 50% year on year and those above $5M grew more than 70%, so the largest "
+    "accounts are also the fastest growing. Keep the two measures apart when presenting: the 85% figure "
+    "above is Cloud ARR, these two are total ARR."
 )
 
 st.divider()

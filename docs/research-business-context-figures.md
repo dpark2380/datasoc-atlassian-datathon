@@ -604,3 +604,35 @@ mapping off the page.
 14. The rejected claims above, especially the Reichheld trace and the five-times
     acquisition myth. Being able to say why a famous number was left out is worth
     more in a Q&A than the number would have been on a slide.
+
+---
+
+## Footnote check on the ">700 customers with $1M+ in ARR" figure
+
+Checked directly against the filed document on 13 September 2026, because the
+first research pass could not recover the footnote from text extraction.
+
+Result: there is no footnote on that figure. It sits on the "Atlassian
+at-a-glance" infographic on page 11 of the Q4 FY26 shareholder letter. The only
+footnotes anywhere on that page are Gartner and Forrester analyst-report
+citations. Searching the full letter for "sample", "as of", "March 2024",
+"internal data", and "survey" returns no data-as-of qualifier on any
+at-a-glance figure. The March 2024 sample note flagged earlier belongs to the
+Q3 FY26 letter, not this one.
+
+Two reasons to prefer other figures anyway:
+
+1. The label reads "$1M+ in ARR", which is total ARR, not Cloud ARR. The
+   concentration argument on the Business Context page is built on Cloud ARR
+   (57,334 customers, over 85% of Cloud ARR). Presenting both without
+   separating them would be an error a judge from Atlassian would catch.
+2. The figure carries no reporting period. The customer metrics table in the
+   10-K is explicitly dated "as at 30 June". This one is not. The supporting
+   evidence is circumstantial: the revenue-by-geography split on the same
+   graphic (Americas 48%, EMEA 41%, Asia Pacific 11%) rounds to the FY26 10-K
+   revenue-by-geography figures, so the page is carrying FY26 data.
+
+The $3M+ and $5M+ growth figures used on the Business Context page come from
+the letter's body prose under the Enterprise section, not from this
+infographic, which is the stronger source. Those are also total ARR, and the
+page now says so explicitly.
