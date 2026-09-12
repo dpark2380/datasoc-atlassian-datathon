@@ -1,0 +1,5 @@
+kagglehub==1.0.2
+pandas
+vaderSentiment
+streamlit
+plotly
