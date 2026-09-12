@@ -20,7 +20,10 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent))
-from eda import USAGE_METRICS, metric_reliability  # noqa: E402
+try:
+    from analysis.eda import USAGE_METRICS, metric_reliability  # noqa: E402
+except ImportError:
+    from eda import USAGE_METRICS, metric_reliability  # noqa: E402
 
 DATA_DIR = Path(__file__).parent.parent / "references" / "Dataset"
 OUT_DOC = Path(__file__).parent.parent / "docs" / "findings-reliability.md"

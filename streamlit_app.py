@@ -18,12 +18,21 @@ import streamlit as st
 
 ROOT = Path(__file__).parent
 sys.path.insert(0, str(ROOT / "analysis"))
-import eda  # noqa: E402
+try:
+    from analysis import eda  # noqa: E402
+except ImportError:
+    import eda  # noqa: E402
 
 
 @st.cache_resource
 def ensure_pipeline_output() -> None:
-    if not (ROOT / "analysis" / "customer_risk.csv").exists():
+    risk_csv = ROOT / "analysis" / "customer_risk.csv"
+    if not risk_csv.exists():
+        eda.main()
+        return
+    with open(risk_csv, "r", encoding="utf-8") as f:
+        header = f.readline()
+    if "Usage Cluster (k=2)" not in header:
         eda.main()
 
 
