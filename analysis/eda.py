@@ -52,9 +52,11 @@ OUT_TICKETS = Path(__file__).parent / "cleaned_tickets.csv"
 OUT_CUSTOMER_RISK = Path(__file__).parent / "customer_risk.csv"
 
 ENGAGEMENT_METRICS = ["Active Days", "Sessions", "Product Actions"]
-# Integrations Used weighted 2x Collaborators -- confirmed sharper tier
-# signal (~5x spread Free->Enterprise vs ~2x for Collaborators).
-EMBEDDEDNESS_WEIGHTS = {"Collaborators": 1, "Integrations Used": 2}
+EMBEDDEDNESS_METRICS = ["Collaborators", "Integrations Used"]
+# Every usage column the pipeline loads per customer. Kept separate from the
+# scoring metric lists above: clustering and the risk scorer's peer chart need
+# all five regardless of how the composites are weighted.
+USAGE_METRICS = ENGAGEMENT_METRICS + EMBEDDEDNESS_METRICS
 TIER_VALUE = {"Free": 0.0, "Standard": 1 / 3, "Premium": 2 / 3, "Enterprise": 1.0}
 USAGE_SNAPSHOT_DATE = pd.Timestamp("2023-05-31")  # end of the product_usage window
 
@@ -85,7 +87,7 @@ PLAYBOOK_ACTIONS = {
         "leadership, logged via Jira Product Discovery (ChurnZero/Gainsight QBR "
         "model; Atlassian's own CS team already uses this tool for triage)."
     ),
-    "Established & Declining": (
+    "Established & Low Engagement": (
         "Automated feature-specific play: email naming the exact underused "
         "feature and its value, an in-app nudge 1-2 days later, and a "
         "complimentary short training session if usage doesn't recover "
@@ -124,12 +126,49 @@ def ticket_count_per_customer(tickets: pd.DataFrame) -> pd.DataFrame:
     return tickets.groupby("Customer ID").size().rename("Ticket Count").reset_index()
 
 
+def metric_reliability(usage: pd.DataFrame, metrics: list[str] | None = None) -> dict[str, float]:
+    """How much of each metric is a stable customer trait rather than
+    month-to-month noise, for the 5-month average the model actually uses.
+
+    Single-month ICC is between-customer variance over total variance. The
+    model averages 5 months, which suppresses the noise term by n, so the
+    reliability that applies here is the Spearman-Brown adjusted figure.
+    On this dataset that ranges from 0.63 (Collaborators) to 0.98 (Sessions):
+    see docs/findings-reliability.md.
+
+    Computed from the data at runtime so the composite weights below are
+    measured rather than hand-picked.
+    """
+    metrics = metrics or USAGE_METRICS
+    n_months = usage.groupby("Customer ID")["Month"].nunique().median()
+
+    reliabilities = {}
+    for metric in metrics:
+        per_customer = usage.groupby("Customer ID")[metric]
+        between = per_customer.mean().var()
+        within = per_customer.var().mean()
+        reliabilities[metric] = between / (between + within / n_months)
+    return reliabilities
+
+
+def weighted_composite(df: pd.DataFrame, weights: dict[str, float]) -> pd.Series:
+    """Standardise each metric, then combine on the given weights.
+
+    Standardising first matters: the previous version multiplied raw values,
+    so a metric's real influence depended on its raw scale rather than on its
+    stated weight (Collaborators' nominal 1:2 weighting worked out to an
+    effective 38:62 split purely because of scale).
+    """
+    total = sum(weights.values())
+    z_scores = [((df[m] - df[m].mean()) / df[m].std()) * (w / total) for m, w in weights.items()]
+    return pd.concat(z_scores, axis=1).sum(axis=1)
+
+
 def customer_usage_summary(usage: pd.DataFrame) -> pd.DataFrame:
     """Average usage metrics per customer across their 5-month history, plus
     their primary product (the one with the most total active days -- for
     the 98.6% of customers with only one product this is just that product)."""
-    metrics = ENGAGEMENT_METRICS + list(EMBEDDEDNESS_WEIGHTS)
-    avg = usage.groupby("Customer ID")[metrics].mean().reset_index()
+    avg = usage.groupby("Customer ID")[USAGE_METRICS].mean().reset_index()
 
     totals = usage.groupby(["Customer ID", "Product"])["Active Days"].sum().reset_index()
     primary = totals.loc[totals.groupby("Customer ID")["Active Days"].idxmax(), ["Customer ID", "Product"]]
@@ -149,7 +188,10 @@ def label_usage_clusters(centroids: pd.DataFrame) -> dict[int, str]:
     integration depth (Collaborators/Integrations Used), each ranked across
     the k centroids, then quadrant-labeled. Written for any even k."""
     volume = centroids[ENGAGEMENT_METRICS].mean(axis=1)
-    depth = centroids[list(EMBEDDEDNESS_WEIGHTS)].mean(axis=1)
+    # Unweighted on purpose: a centroid averages over a whole cluster, where
+    # the per-customer noise that reliability weighting corrects for has
+    # already averaged out.
+    depth = centroids[EMBEDDEDNESS_METRICS].mean(axis=1)
     volume_rank = volume.rank(method="first").astype(int) - 1
     depth_rank = depth.rank(method="first").astype(int) - 1
     half = len(centroids) / 2
@@ -215,7 +257,12 @@ def add_usage_anomalies(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def build_customer_risk(customers: pd.DataFrame, usage_summary: pd.DataFrame, ticket_counts: pd.DataFrame) -> pd.DataFrame:
+def build_customer_risk(
+    customers: pd.DataFrame,
+    usage_summary: pd.DataFrame,
+    ticket_counts: pd.DataFrame,
+    reliabilities: dict[str, float],
+) -> pd.DataFrame:
     df = customers.merge(usage_summary, on="Customer ID", how="left")
     df = df.merge(ticket_counts, on="Customer ID", how="left")
     df["Ticket Count"] = df["Ticket Count"].fillna(0)
@@ -226,12 +273,13 @@ def build_customer_risk(customers: pd.DataFrame, usage_summary: pd.DataFrame, ti
     # Folding embeddedness into the same score would let a well-integrated
     # but declining account cancel out its own risk, which contradicts the
     # decision that embeddedness should RAISE urgency, not hide disengagement.
-    def normalise(col: pd.Series) -> pd.Series:
-        filled = col.fillna(col.median())
-        span = filled.max() - filled.min()
-        return (filled - filled.min()) / span if span else filled * 0
-
-    df["Engagement Composite"] = pd.concat([normalise(df[m]) for m in ENGAGEMENT_METRICS], axis=1).mean(axis=1)
+    #
+    # Both composites weight each metric by its measured reliability rather
+    # than by hand. For engagement this changes almost nothing (all three
+    # metrics sit between 0.92 and 0.98), but it means no weight in the model
+    # is an unexplained choice.
+    engagement_weights = {m: reliabilities[m] for m in ENGAGEMENT_METRICS}
+    df["Engagement Composite"] = weighted_composite(df, engagement_weights)
 
     # At Risk / disengagement severity: percentile within the customer's own
     # Plan Type x Primary Product peer group -- both are confirmed real,
@@ -242,10 +290,19 @@ def build_customer_risk(customers: pd.DataFrame, usage_summary: pd.DataFrame, ti
     df["At Risk"] = df["Engagement Percentile"] <= 25
     disengagement_severity = 100 - df["Engagement Percentile"]
 
-    # Embeddedness: weighted combination of Collaborators + Integrations Used,
-    # expressed as a percentile so it combines cleanly with the tier weight.
-    weighted_embeddedness = sum(df[m] * w for m, w in EMBEDDEDNESS_WEIGHTS.items())
-    df["Embeddedness Percentile"] = weighted_embeddedness.rank(pct=True) * 100
+    # Embeddedness: Collaborators + Integrations Used, each standardised and
+    # then weighted by its measured reliability, expressed as a percentile so
+    # it combines cleanly with the tier weight.
+    #
+    # Note for anyone reading this expecting the noisy metric to have been
+    # dropped: it wasn't, and reliability weighting does not reduce its
+    # influence. Collaborators is the least reliable input (0.63 against 0.89
+    # for Integrations Used), but weighting by reliability gives it 41% of the
+    # embeddedness score, slightly MORE than the 38% it effectively had under
+    # the old raw-value scheme. The gain here is that the split is now measured
+    # and stated rather than an accident of raw scale.
+    embeddedness_weights = {m: reliabilities[m] for m in EMBEDDEDNESS_METRICS}
+    df["Embeddedness Percentile"] = weighted_composite(df, embeddedness_weights).rank(pct=True) * 100
 
     # Risk Score: disengagement severity scaled up by an urgency multiplier
     # from account value (plan tier) and embeddedness -- both confirmed to
@@ -272,7 +329,7 @@ def build_customer_risk(customers: pd.DataFrame, usage_summary: pd.DataFrame, ti
             return "New & Struggling"
         if high_value.loc[row.name]:
             return "High-Value Disengaged"
-        return "Established & Declining"
+        return "Established & Low Engagement"
 
     df["Risk Category"] = df.apply(categorise, axis=1)
     df["Recommended Action"] = df["Risk Category"].map(PLAYBOOK_ACTIONS)
@@ -292,11 +349,16 @@ def main() -> None:
 
     usage_summary = customer_usage_summary(usage)
     ticket_counts = ticket_count_per_customer(tickets)
-    risk = build_customer_risk(customers, usage_summary, ticket_counts)
+    reliabilities = metric_reliability(usage)
+    risk = build_customer_risk(customers, usage_summary, ticket_counts, reliabilities)
     risk.to_csv(OUT_CUSTOMER_RISK, index=False)
 
     print(f"Tickets (descriptive only): {len(tickets)} rows -> {OUT_TICKETS}")
     print(f"Customer risk: {len(risk)} rows -> {OUT_CUSTOMER_RISK}")
+    print()
+    print("Composite weights, from measured reliability of the 5-month average:")
+    for metric, reliability in reliabilities.items():
+        print(f"  {metric:20s} {reliability:.3f}")
     print()
     print("Active Days by Plan Type:")
     print(risk.groupby("Plan Type")["Active Days"].mean().sort_values())

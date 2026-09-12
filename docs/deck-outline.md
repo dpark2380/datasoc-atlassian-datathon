@@ -47,7 +47,7 @@ embedded accounts) and one of four categories:
 |----|----|
 | Monitor Only | 6,248 |
 | New & Struggling | 519 |
-| Established & Declining | 893 |
+| Established & Low Engagement | 893 |
 | High-Value Disengaged | 660 |
 
 ## 5. The recommendation
@@ -59,7 +59,7 @@ One specific, sourced action per category, not a generic email:
 - High-Value Disengaged gets a quarterly executive business review, logged
   through Jira Product Discovery, which Atlassian's own Customer Success
   team already uses for account prioritization.
-- Established & Declining gets an automated, feature-specific play (name
+- Established & Low Engagement gets an automated, feature-specific play (name
   the unused feature, email, in-app nudge, then a short training offer),
   costing no CSM time unless it fails to move usage.
 

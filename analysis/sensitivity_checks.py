@@ -45,7 +45,7 @@ def embeddedness_weight_sensitivity(df: pd.DataFrame) -> pd.DataFrame:
     whether other reasonable ratios rank customers the same way (Spearman
     correlation, computed as Pearson correlation of ranks) and how many
     at-risk customers would flip between High-Value Disengaged and
-    Established & Declining (the category split driven by this score)."""
+    Established & Low Engagement (the category split driven by this score)."""
     baseline_ratio = 2
     at_risk = df[df["At Risk"]].copy()
     high_value_tier = at_risk["Plan Type"].isin(["Enterprise", "Premium"])

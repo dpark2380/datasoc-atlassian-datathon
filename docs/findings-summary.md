@@ -71,7 +71,7 @@ on how long they've been a customer and how embedded they are:
 |----|----|----|
 | Monitor Only | Not at risk | 6,248 |
 | New & Struggling | At risk, recently joined relative to our customer base | 519 |
-| Established & Declining | At risk, longer-tenured, lower stakes | 893 |
+| Established & Low Engagement | At risk, longer-tenured, lower stakes | 893 |
 | High-Value Disengaged | At risk, longer-tenured, high plan tier or heavily integrated | 660 |
 
 ## What we recommend for each category
@@ -90,7 +90,7 @@ usage data. Atlassian's Customer Success team already uses Jira Product
 Discovery to prioritize accounts, so this fits into an existing process
 instead of requiring a new one.
 
-For Established & Declining accounts, an automated sequence names the
+For Established & Low Engagement accounts, an automated sequence names the
 specific feature that's gone unused, followed by an in-app nudge and a
 short training offer if usage doesn't recover. No CSM time is needed unless
 the automated play fails.

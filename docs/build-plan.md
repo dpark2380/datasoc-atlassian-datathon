@@ -82,7 +82,7 @@ decision:
 
 Monitor Only means not at risk, no action needed. New & Struggling means
 at risk and newer relative to the customer base, which reads as an
-onboarding problem. Established & Declining means at risk, longer-tenured,
+onboarding problem. Established & Low Engagement means at risk, longer-tenured,
 and lower value or lower embeddedness, a real but lower-stakes churn risk.
 High-Value Disengaged means at risk, longer-tenured, and either high plan
 tier or heavily integrated, the account most worth protecting.
@@ -102,7 +102,7 @@ New & Struggling gets a milestone-tracked onboarding review, using
 Atlassian's own published Jira Adoption Guide as the session material.
 High-Value Disengaged gets a quarterly executive business review, logged
 through Jira Product Discovery, a tool Atlassian's own Customer Success
-team already uses for account prioritization. Established & Declining
+team already uses for account prioritization. Established & Low Engagement
 gets an automated, feature-specific play (name the unused feature, email,
 in-app nudge, then a training offer), costing no CSM time unless it fails.
 

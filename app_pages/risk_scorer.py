@@ -20,7 +20,7 @@ RISK_CSV = Path(__file__).parent.parent / "analysis" / "customer_risk.csv"
 CATEGORY_COLOR = {
     "Monitor Only": "#6b7280",
     "New & Struggling": "#f59e0b",
-    "Established & Declining": "#f97316",
+    "Established & Low Engagement": "#f97316",
     "High-Value Disengaged": "#dc2626",
 }
 PEER_METRICS = ["Active Days", "Sessions", "Product Actions", "Collaborators", "Integrations Used"]

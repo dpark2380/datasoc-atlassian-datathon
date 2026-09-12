@@ -214,7 +214,7 @@ invented sentiment score.
    this escalation can be logged and tracked the same way, making it a
    process extension rather than a new tool.
 
-4. Established & Declining gets a usage-triggered feature-specific play, not
+4. Established & Low Engagement gets a usage-triggered feature-specific play, not
    a generic email. Replace the scheduled check-in with an automated play
    scoped to the specific feature or product (of the five in the suite) whose
    usage has dropped: an email naming that specific feature and its value,

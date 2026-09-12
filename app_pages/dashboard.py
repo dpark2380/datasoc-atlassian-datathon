@@ -20,6 +20,7 @@ import streamlit as st
 
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT / "analysis"))
+import reliability_checks  # noqa: E402
 import sensitivity_checks  # noqa: E402
 
 RISK_CSV = ROOT / "analysis" / "customer_risk.csv"
@@ -28,7 +29,7 @@ USAGE_CSV = ROOT / "references" / "Dataset" / "product_usage.csv"
 DOCS_DIR = ROOT / "docs"
 
 PLAN_ORDER = ["Free", "Standard", "Premium", "Enterprise"]
-CATEGORY_ORDER = ["Monitor Only", "New & Struggling", "Established & Declining", "High-Value Disengaged"]
+CATEGORY_ORDER = ["Monitor Only", "New & Struggling", "Established & Low Engagement", "High-Value Disengaged"]
 
 # Atlassian-blue-led qualitative palette, for chart color consistency.
 ATLASSIAN_COLORS = ["#0052CC", "#4C9AFF", "#00B8D9", "#6554C0", "#FF991F", "#DE350B"]
@@ -41,6 +42,7 @@ DOC_FILES = {
     "Data quality audit": "findings-data-quality.md",
     "Additional signal check": "findings-additional-signals.md",
     "ML segments (clustering + anomaly detection)": "findings-ml-segments.md",
+    "Metric reliability and the trend test": "findings-reliability.md",
     "Sensitivity and robustness checks": "findings-sensitivity.md",
     "Customer success playbook research": "research-cs-playbook-actions.md",
     "Deck outline": "deck-outline.md",
@@ -65,6 +67,14 @@ def load_data():
     tickets = pd.read_csv(TICKETS_CSV)
     usage = pd.read_csv(USAGE_CSV)
     return risk, tickets, usage
+
+
+@st.cache_data
+def load_reliability_results(_usage: pd.DataFrame):
+    return {
+        "table": reliability_checks.reliability_table(_usage),
+        "trend": reliability_checks.trend_permutation_test(_usage),
+    }
 
 
 @st.cache_data
@@ -95,8 +105,8 @@ with st.sidebar:
 filtered = risk[risk["Plan Type"].isin(plans)]
 at_risk = filtered[filtered["At Risk"]]
 
-tab_overview, tab_risk, tab_segments, tab_robustness, tab_docs = st.tabs(
-    ["Overview", "Risk model", "Usage segments (ML)", "Robustness checks", "Documentation"]
+tab_overview, tab_risk, tab_segments, tab_reliability, tab_robustness, tab_docs = st.tabs(
+    ["Overview", "Risk model", "Usage segments (ML)", "Data reliability", "Robustness checks", "Documentation"]
 )
 
 # --- Overview --------------------------------------------------------------
@@ -159,7 +169,7 @@ with tab_risk:
         "    - This is a relative quartile, not an absolute cutoff like \"under 90 days\": no customer "
         "in this dataset is younger than about 1.5 years by the 2023 usage window, so \"recently "
         "acquired\" means the youngest 25% of the base, not literally new.\n"
-        "- **Established & Declining**: at risk, longer-tenured, and either lower plan tier or lower "
+        "- **Established & Low Engagement**: at risk, longer-tenured, and either lower plan tier or lower "
         "embeddedness. A real but lower-stakes churn risk.\n"
         "    - Applies when At Risk is true, Recently Acquired is false, and High-Value (defined below) "
         "is also false.\n"
@@ -279,7 +289,7 @@ with tab_segments:
         f"- **High-Value Disengaged** customers come mostly from: {top_two('High-Value Disengaged')}. This "
         "category is specifically defined by high embeddedness, and \"Integration-heavy\" is the cluster "
         "built around that same axis -- two independently-built methods landing on the same distinction.\n"
-        f"- **Established & Declining** customers come mostly from: {top_two('Established & Declining')}. "
+        f"- **Established & Low Engagement** customers come mostly from: {top_two('Established & Low Engagement')}. "
         "This is the *lower*-embeddedness at-risk group, and it lines up with the lowest-volume, "
         "lowest-depth cluster.\n"
         f"- **New & Struggling** customers come mostly from: {top_two('New & Struggling')}. This category is "
@@ -288,6 +298,80 @@ with tab_segments:
         "against). It shows the two methods agree on who's engaged and who isn't, despite being built "
         "independently and from different logic -- corroboration, not proof."
     )
+
+# --- Data reliability ---------------------------------------------------------
+with tab_reliability:
+    st.subheader("We audited our own data, not just the organisers'")
+    st.caption(
+        "The ticket audit showed that file is random. This is the same audit turned on the usage data "
+        "we did build the model on. It changed how the model is weighted and what one category is called. "
+        "Computed live from product_usage.csv."
+    )
+    reliability = load_reliability_results(usage)
+
+    st.markdown("#### How much of each metric is signal")
+    st.markdown(
+        "A metric is only useful if it measures something stable about a customer rather than which month "
+        "you happened to look. The intraclass correlation splits each metric's variance into the part that "
+        "separates customers from each other and the part that just moves month to month. The model averages "
+        "5 months per customer, so the last column is the figure that applies to it."
+    )
+    st.dataframe(reliability["table"], width="stretch")
+
+    rel_col = [c for c in reliability["table"].columns if c.startswith("Reliability")][0]
+    fig = px.bar(
+        reliability["table"].sort_values(rel_col), x="Metric", y=rel_col,
+        labels={rel_col: "Reliability of the 5-month average"},
+    )
+    fig.update_yaxes(range=[0, 1.05])
+    st.plotly_chart(fig, width="stretch")
+
+    st.markdown(
+        "Collaborators is the weakest input by a clear margin. In any single month it is mostly noise: its "
+        "within-customer variance is larger than its between-customer variance, meaning the same customer's "
+        "collaborator count moves around more than customers differ from each other.\n\n"
+        "Every composite in the model now weights each metric by its measured reliability instead of by a "
+        "hand-picked number. Stated plainly, because it would be easy to imply otherwise: this does **not** "
+        "reduce Collaborators' influence. The old scheme multiplied raw values, so the effective split was "
+        "38% Collaborators to 62% Integrations Used, driven by raw scale rather than intent. Reliability "
+        "weighting gives Collaborators 41%. The gain is that the split is now measured and explainable, not "
+        "that a noisy variable was removed. Applying it moved exactly one customer between categories."
+    )
+
+    st.divider()
+    st.markdown("#### Is there any trend in the 5-month panel?")
+    trend = reliability["trend"]
+    st.markdown(
+        "The obvious question about a 5-month panel is why there is no trend analysis. We tested for one. "
+        f"We fit a slope through each customer's 5 monthly Active Days values ({trend['customers']:,} customers "
+        "with complete months), then did the same after shuffling each customer's months into a random order. "
+        "Shuffling destroys any real time ordering, so if customers had real trends the shuffled slopes would "
+        "be visibly flatter."
+    )
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Real slope spread (SD)", f"{trend['real_slope_sd']:.4f}")
+    m2.metric("Shuffled slope spread (SD)", f"{trend['shuffled_slope_sd']:.4f}")
+    m3.metric("Ratio", f"{trend['sd_ratio']:.3f}", "1.0 means indistinguishable from noise")
+
+    st.markdown(
+        f"A ratio of 1.0 means real slopes are indistinguishable from slopes fitted to randomly reordered "
+        f"data. At {trend['sd_ratio']:.3f}, that is what we have.\n\n"
+        f"The split-half check says the same thing from another angle. A real trend persists, so a customer "
+        f"trending up in the first half should still be trending up in the second. The actual correlation "
+        f"between first-half and second-half slopes is **{trend['split_half_corr']:.3f}**. It is negative, "
+        f"which is mean reversion: a customer above their own average one month tends to be below it the "
+        f"next. That is fluctuation around a stable level, not a trajectory. Consistent with both, "
+        f"{trend['share_declining']:.1%} of customers look like they are declining and "
+        f"{trend['share_rising']:.1%} look like they are rising, close to the even split noise would produce."
+    )
+    st.markdown(
+        "Two consequences. Every slope, percent-change, or trend feature derivable from this panel is "
+        "measuring noise. And a category previously called \"Established & Declining\" claimed a trajectory "
+        "the data cannot support, so it is now \"Established & Low Engagement\", describing a level rather "
+        "than a direction. The risk model compares a customer's usage against their peer group rather than "
+        "against their own history, and this is the reason why."
+    )
+
 
 # --- Robustness checks -------------------------------------------------------
 with tab_robustness:

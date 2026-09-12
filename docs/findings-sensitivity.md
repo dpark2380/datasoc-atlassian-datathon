@@ -24,10 +24,10 @@ percentage would flag a completely different population.
 
 |   Integrations weight |   Rank correlation vs. baseline (2x) | At-risk customers whose High-Value/Established split flips   |
 |----------------------:|-------------------------------------:|:-------------------------------------------------------------|
-|                     1 |                                0.973 | 1.4%                                                         |
+|                     1 |                                0.973 | 1.6%                                                         |
 |                     2 |                                1     | 0.0%                                                         |
 |                     3 |                                0.994 | 0.6%                                                         |
-|                     5 |                                0.978 | 0.7%                                                         |
+|                     5 |                                0.978 | 0.6%                                                         |
 
 Rank correlation stays high across every ratio tested (1x to 5x), meaning
 the specific weight doesn't change who's considered "embedded" very much.
@@ -38,10 +38,10 @@ small share, even at the most extreme ratio tested.
 
 |   Urgency coefficient |   Rank correlation vs. baseline (0.3) |
 |----------------------:|--------------------------------------:|
-|                   0.2 |                                 0.878 |
-|                   0.3 |                                 1     |
-|                   0.4 |                                 0.914 |
-|                   0.5 |                                 0.818 |
+|                   0.2 |                                 0.874 |
+|                   0.3 |                                 0.997 |
+|                   0.4 |                                 0.915 |
+|                   0.5 |                                 0.823 |
 
 Risk Category never depends on this coefficient at all (it's gated by At
 Risk, tenure, and the high-value threshold, not by the multiplier). The
