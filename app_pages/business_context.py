@@ -139,8 +139,50 @@ st.caption(
 
 st.divider()
 
-# --- 4. Integration depth -------------------------------------------------
-st.header("4. Integration depth is a stickiness signal, which is what the embeddedness score uses")
+# --- 4. Nobody is watching most of these accounts -------------------------
+st.header("4. Below a certain size, nobody is assigned to the account at all")
+
+st.markdown(
+    "**Filed.** This is the part that decides what the solution has to look like. From the FY26 10-K:\n\n"
+    "> Historically, a majority of users do not convert from free trials or limited free versions to paid "
+    "apps or products, and our strategy also relies on these users influencing broader adoption within "
+    "their organizations.\n\n"
+    "> ... we do not have to solely rely on a traditional, commissioned direct sales force until a "
+    "customer reaches a specific size, thanks to the automation and efficiency built into our sales "
+    "model.\n\n"
+    "Read those together. Below the enterprise threshold there is no assigned human watching the account. "
+    "Nobody is having a quarterly conversation with a mid-sized Standard-plan customer, so there is no "
+    "relationship through which quiet disengagement would surface. If the signal is not in the telemetry, "
+    "it does not exist anywhere."
+)
+
+st.markdown("##### What that means the solution has to do")
+st.markdown(
+    "1. **Run with no human in the loop to detect.** Detection cannot depend on a CSM noticing something, "
+    "because for most accounts there is no CSM. The flag has to be computed from usage data on a "
+    "schedule.\n"
+    "2. **Work at tens of thousands of accounts, not hundreds.** The concentration in section 1 sits "
+    "across 57,334 accounts. A process that only scales to the named-account list misses the range where "
+    "this matters most.\n"
+    "3. **Carry an automated intervention, not just an automated alert.** Flagging an account nobody is "
+    "assigned to achieves nothing on its own. This is exactly why the Established & Low Engagement play "
+    "is a feature-specific email, then an in-app nudge, then a training offer, with no CSM time spent "
+    "unless the automated sequence fails to move usage. The intervention has to be as automatic as the "
+    "detection for the tier that has no owner.\n"
+    "4. **Reserve human effort for where it is justified.** The High-Value Disengaged play is an "
+    "executive business review precisely because that tier is above the threshold where Atlassian does "
+    "assign people."
+)
+st.caption(
+    "This is the clearest filed justification for an automated, usage-driven detector, and it is also the "
+    "reason the playbook is tiered rather than uniform. The tiering is not a nicety; it follows from "
+    "Atlassian's own stated sales and support model."
+)
+
+st.divider()
+
+# --- 5. Integration depth -------------------------------------------------
+st.header("5. Integration depth is a stickiness signal, which is what the embeddedness score uses")
 
 st.markdown(
     "**Filed.** The clause that most directly licenses a count-of-integrations score, from the Q4 FY26 "
@@ -168,8 +210,8 @@ st.info(
 
 st.divider()
 
-# --- 5. The hardest question ---------------------------------------------
-st.header("5. The hardest question, and the answer")
+# --- 6. The hardest question ---------------------------------------------
+st.header("6. The hardest question, and the answer")
 
 st.markdown(
     "**Peer-reviewed.** The strongest challenge to any risk model is that targeting the highest-risk "

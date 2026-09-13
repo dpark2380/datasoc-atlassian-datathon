@@ -58,9 +58,30 @@ def z_score(col: pd.Series) -> pd.Series:
     return (col - col.mean()) / col.std()
 
 
+def _check_known_values(series: pd.Series, expected: list[str], column: str) -> None:
+    """Fail loudly if the data contains labels the app does not know about.
+
+    pd.Categorical silently turns unrecognised values into NaN, which renders
+    as a labelled bar of height zero rather than an error. That is worse than
+    a crash: a stale file would quietly show an empty category in a chart
+    somebody might put in front of judges. This surfaces it instead.
+    """
+    unknown = sorted(set(series.dropna().unique()) - set(expected))
+    if unknown:
+        st.error(
+            f"`{column}` in analysis/customer_risk.csv contains values this app does not recognise: "
+            f"{unknown}. That file is stale or was written by a different version of the pipeline. "
+            "Re-run `.venv/bin/python analysis/eda.py` to regenerate it.",
+            icon=":material/error:",
+        )
+        st.stop()
+
+
 @st.cache_data
 def load_data():
     risk = pd.read_csv(RISK_CSV)
+    _check_known_values(risk["Plan Type"], PLAN_ORDER, "Plan Type")
+    _check_known_values(risk["Risk Category"], CATEGORY_ORDER, "Risk Category")
     risk["Plan Type"] = pd.Categorical(risk["Plan Type"], categories=PLAN_ORDER, ordered=True)
     risk["Risk Category"] = pd.Categorical(risk["Risk Category"], categories=CATEGORY_ORDER, ordered=True)
     risk["Usage Volume"] = pd.concat(
@@ -262,6 +283,17 @@ with tab_segments:
                 opacity=0.35, render_mode="webgl",
             )
             st.plotly_chart(fig, width="stretch", key=f"cluster_scatter_k{k}")
+
+    st.info(
+        "The clusters visibly overlap, and that is real rather than an artifact of squashing five "
+        "dimensions into two. We checked: silhouette measured on just these two plotted axes is 0.46 at "
+        "k=2, slightly higher than the 0.40 measured in the full five-dimensional space the clustering "
+        "actually runs in. The plot is not hiding separation. The cause is the 0.63 correlation between "
+        "usage volume and integration depth: this data is one continuous diagonal cloud, so k-means is "
+        "cutting a continuum rather than finding islands that were already there. That is why these are "
+        "described as bands for prioritisation and not as four naturally distinct customer types.",
+        icon=":material/query_stats:",
+    )
 
     st.subheader("Where the usage anomalies sit")
     st.caption(
