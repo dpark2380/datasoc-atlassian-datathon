@@ -11,6 +11,7 @@ produced by analysis/eda.py, plus the docs/ findings for the Documentation
 tab. Run analysis/eda.py and analysis/sensitivity_checks.py first if these
 don't exist yet.
 """
+import hashlib
 import sys
 from pathlib import Path
 
@@ -58,6 +59,25 @@ def z_score(col: pd.Series) -> pd.Series:
     return (col - col.mean()) / col.std()
 
 
+def _module_version(*modules) -> str:
+    """Hash of one or more modules' source, to use as an explicit cache key.
+
+    st.cache_data hashes the wrapped function's own bytecode plus its
+    non-underscore args. It does NOT hash the code of functions that function
+    calls into from another module, and an underscore-prefixed argument (used
+    here for the DataFrames, which are expensive to hash) is excluded from
+    the key entirely. A prior version of this cache had no dependency on
+    sensitivity_checks.py's contents at all, so a code change there (the
+    cutoff_sensitivity rewrite) was not enough to invalidate a stale cached
+    result on a long-lived deployed process that survived the redeploy,
+    which produced a KeyError when the dashboard's melt() looked for columns
+    the stale cached table didn't have. Passing this hash as a normal argument
+    forces recomputation whenever any of these modules actually changes.
+    """
+    combined = b"".join(Path(m.__file__).read_bytes() for m in modules)
+    return hashlib.sha256(combined).hexdigest()
+
+
 def _check_known_values(series: pd.Series, expected: list[str], column: str) -> None:
     """Fail loudly if the data contains labels the app does not know about.
 
@@ -96,7 +116,7 @@ def load_data():
 
 
 @st.cache_data
-def load_reliability_results(_usage: pd.DataFrame):
+def load_reliability_results(_usage: pd.DataFrame, code_version: str):
     return {
         "table": reliability_checks.reliability_table(_usage),
         "trend": reliability_checks.trend_permutation_test(_usage),
@@ -104,7 +124,7 @@ def load_reliability_results(_usage: pd.DataFrame):
 
 
 @st.cache_data
-def load_sensitivity_results(_risk: pd.DataFrame):
+def load_sensitivity_results(_risk: pd.DataFrame, code_version: str):
     bootstrap_mean, bootstrap_detail = sensitivity_checks.bootstrap_flag_stability(_risk)
     return {
         "cutoff": sensitivity_checks.cutoff_sensitivity(_risk),
@@ -465,7 +485,7 @@ with tab_reliability:
         "we did build the model on. It changed how the model is weighted and what one category is called. "
         "Computed live from product_usage.csv."
     )
-    reliability = load_reliability_results(usage)
+    reliability = load_reliability_results(usage, _module_version(reliability_checks))
 
     st.markdown("#### How much of each metric is signal")
     st.markdown(
@@ -539,7 +559,7 @@ with tab_robustness:
         "by judgment, since there's no churn label to fit them against. These checks show whether a reasonable "
         "alternative choice would flag a very different set of customers, or just fine-tune the result."
     )
-    results = load_sensitivity_results(risk)
+    results = load_sensitivity_results(risk, _module_version(sensitivity_checks))
 
     st.markdown("**At Risk cutoff.** How the four-way Risk Category split changes across cutoffs from 15% to 35%:")
     st.caption(
