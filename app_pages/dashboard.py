@@ -167,151 +167,204 @@ tab_eda, tab_overview, tab_risk, tab_segments, tab_reliability, tab_robustness, 
 
 # --- EDA ---------------------------------------------------------------------
 with tab_eda:
-    st.subheader("Pitch evidence at a glance")
+    st.subheader("EDA by source dataset")
     st.caption(
-        "The decision-driving EDA in four numbers: the support file cannot support sentiment analysis, "
-        "while the usage panel contains stable, commercially meaningful signal."
+        "A slide-ready summary of what each file contributes, what it cannot support, and which evidence "
+        "we carry into the solution. Every number is computed live from the raw files."
     )
-    with st.container(horizontal=True):
+    customer_card, ticket_card, usage_card = st.columns(3, border=True)
+    with customer_card:
+        st.markdown("#### customers.csv")
+        st.caption("Account context")
+        st.metric("Customer records", f"{len(customers):,}")
+        st.metric("Profile fields", f"{len(customers.columns)}")
+        st.metric("Plan tiers", f"{customers['Plan Type'].nunique()}")
+        st.markdown(
+            "**Use it to define fair peer groups.** Plan tier carries meaningful commercial context; "
+            "industry, region, and company size remain descriptive rather than risk signals."
+        )
+
+    with ticket_card:
+        st.markdown("#### customer_support_tickets.csv")
+        st.caption("Experience evidence")
+        st.metric("Ticket records", f"{len(tickets):,}")
         st.metric(
             "Usable customer-written text",
             "0 fields",
-            border=True,
             help="The dataset has no ticket description, customer comment, or other customer-authored text. "
             "Resolution is generated filler rather than customer sentiment.",
         )
         st.metric(
             "Impossible event order",
             f"{eda_metrics['impossible_order_rate']:.1%}",
-            border=True,
             help=f"Among {eda_metrics['resolved_ticket_count']:,} resolved tickets, the recorded resolution "
             "precedes the recorded first response. This cannot happen in a real support workflow.",
         )
+        st.markdown(
+            "**Do not model sentiment or risk from it.** Satisfaction, priority, type, channel, and status "
+            "are statistically flat, and the event timestamps are not a valid sequence."
+        )
+
+    with usage_card:
+        st.markdown("#### product_usage.csv")
+        st.caption("Behavioural signal")
+        st.metric("Usage observations", f"{len(usage):,}")
+        st.metric("Tracked months", f"{eda_metrics['month_count']}")
         st.metric(
             "Jan–May usage persistence",
             f"{eda_metrics['active_days_persistence']:.2f}",
-            border=True,
             help="Correlation between each customer's first- and last-month Active Days. A strong positive "
             "value shows that usage measures a persistent difference between customers.",
         )
         st.metric(
             "Enterprise vs. Free integrations",
             f"{eda_metrics['integration_tier_ratio']:.1f}×",
-            border=True,
             help="Average Integrations Used is more than five times higher for Enterprise than Free accounts, "
             "the sharpest plan-tier signal in the usage data.",
         )
-
-    st.divider()
-
-    st.subheader("What's in the raw files")
-    st.caption(
-        "The three files the datathon dataset ships as, before any of our own scoring or clustering. "
-        "Every number below is computed live from them."
-    )
-    shape_table = dashboard_metrics.build_raw_file_summary(customers, tickets, usage)
-    st.dataframe(shape_table, width="stretch", hide_index=True)
-
-    missing = tickets.isna().sum()
-    missing = missing[missing > 0].sort_values(ascending=False).reset_index()
-    missing.columns = ["Column", "Missing rows"]
-    missing["Missing %"] = (missing["Missing rows"] / len(tickets) * 100).round(1)
-    st.caption(
-        "Missing values in the ticket file, the only file with any. Resolution, Time to Resolution, and "
-        "Customer Satisfaction Rating are all missing on exactly the same rows: unresolved tickets have no "
-        "resolution to report yet, which is the expected shape, not a data problem on its own."
-    )
-    st.dataframe(missing, width="stretch", hide_index=True)
-
-    st.divider()
-
-    st.subheader("Usage is stable per customer over time")
-    st.caption(
-        "What this chart shows: each customer's average Active Days in their first tracked month (January "
-        "2023) against their last (May 2023). A real, sticky metric should land near the diagonal; pure "
-        "noise would look like a formless cloud."
-    )
-    first_month, last_month = usage["Month"].min(), usage["Month"].max()
-    persistence = usage[usage["Month"] == first_month].groupby("Customer ID")["Active Days"].mean().rename("First month").to_frame()
-    persistence["Last month"] = usage[usage["Month"] == last_month].groupby("Customer ID")["Active Days"].mean()
-    persistence = persistence.dropna()
-    corr = persistence["First month"].corr(persistence["Last month"])
-    fig = px.scatter(persistence, x="First month", y="Last month", opacity=0.25, render_mode="webgl")
-    fig.update_traces(marker=dict(size=5))
-    st.plotly_chart(fig, width="stretch", key="eda_persistence")
-    st.caption(f"First-to-last-month correlation: **{corr:.2f}** across {len(persistence):,} customers.")
-
-    st.subheader("Usage scales with plan tier and product")
-    st.caption(
-        "The stable usage signal also moves in expected commercial patterns. Higher plan tiers use the "
-        "products more deeply, while each product retains its own natural activity baseline."
-    )
-    plan_chart, product_chart = st.columns(2)
-    with plan_chart:
-        fig = px.bar(
-            eda_metrics["usage_by_plan"],
-            x="Plan Type",
-            y="Active Days",
-            title="Average active days by plan",
+        st.markdown(
+            "**Build the solution on this file.** Usage is stable by customer and scales in expected ways "
+            "with plan tier and product, making it the strongest defensible signal available."
         )
-        st.plotly_chart(fig, width="stretch", key="eda_usage_by_plan")
-    with product_chart:
-        fig = px.bar(
-            eda_metrics["usage_by_product"],
-            x="Product",
-            y="Active Days",
-            title="Average active days by product",
-        )
-        st.plotly_chart(fig, width="stretch", key="eda_usage_by_product")
-    st.caption(
-        f"The panel covers **{eda_metrics['month_count']} complete months**. Active Days rises from "
-        f"**{eda_metrics['usage_by_plan'].iloc[0]['Active Days']:.1f} on Free** to "
-        f"**{eda_metrics['usage_by_plan'].iloc[-1]['Active Days']:.1f} on Enterprise**; Integrations Used "
-        f"rises **{eda_metrics['integration_tier_ratio']:.1f}×** across the same tiers."
+
+    st.info(
+        "**Slide summary:** customer data supplies the peer context; ticket data fails the validity checks "
+        "needed for sentiment analysis; usage data provides the stable signal for prioritising accounts.",
+        icon=":material/slideshow:",
     )
 
     st.divider()
 
-    st.subheader("Ticket fields don't move with anything")
-    st.caption(
-        "What this chart shows: the average Customer Satisfaction Rating (1-5) for each Ticket Priority. "
-        "If priority reflected anything real about the customer's experience, Critical tickets should score "
-        "noticeably worse than Low ones. They don't."
+    st.subheader("Supporting EDA")
+    customer_detail, ticket_detail, usage_detail = st.tabs(
+        ["Customer context", "Support ticket quality", "Product usage signal"]
     )
-    sat_by_priority = tickets.groupby("Ticket Priority", observed=True)["Customer Satisfaction Rating"].mean().reset_index()
-    fig = px.bar(sat_by_priority, x="Ticket Priority", y="Customer Satisfaction Rating", range_y=[0, 5])
-    st.plotly_chart(fig, width="stretch", key="eda_sat_by_priority")
 
-    st.caption(
-        "The same test repeated across every categorical ticket field and against several outcomes: the "
-        "spread between a field's best-scoring and worst-scoring group, versus the outcome's own standard "
-        "deviation. A real relationship produces a spread comparable to that standard deviation; these "
-        "don't."
-    )
-    spread_rows = []
-    for outcome in ["Customer Satisfaction Rating"]:
+    with customer_detail:
+        st.markdown("#### Customer context sets the comparison groups")
+        st.caption(
+            "Customer attributes describe who is in the sample. Plan Type is the useful modelling context: "
+            "risk is assessed against customers on the same plan rather than across unlike accounts."
+        )
+        plan_counts = customers["Plan Type"].value_counts().reindex(PLAN_ORDER).reset_index()
+        fig = px.bar(plan_counts, x="Plan Type", y="count", labels={"count": "Customers"})
+        st.plotly_chart(fig, width="stretch", key="eda_customer_plan_mix")
+        st.caption(
+            "Industry, region, and company size were tested against usage and added no practically meaningful "
+            "separation. They stay available for description, but they do not drive the risk model."
+        )
+
+    with ticket_detail:
+        missing = tickets.isna().sum()
+        missing = missing[missing > 0].sort_values(ascending=False).reset_index()
+        missing.columns = ["Column", "Missing rows"]
+        missing["Missing %"] = (missing["Missing rows"] / len(tickets) * 100).round(1)
+        st.markdown("#### Missingness is expected; validity is the problem")
+        st.caption(
+            "Resolution, Time to Resolution, and Customer Satisfaction Rating are missing on the same "
+            "unresolved tickets. That pattern is coherent on its own; the invalid chronology and random "
+            "field relationships are what make the file unusable for sentiment modelling."
+        )
+        st.dataframe(missing, width="stretch", hide_index=True)
+
+        st.markdown("#### Ticket fields don't move with anything")
+        st.caption(
+            "Average Customer Satisfaction Rating (1–5) by Ticket Priority. If priority reflected the "
+            "customer experience, Critical tickets should score noticeably worse than Low ones. They don't."
+        )
+        sat_by_priority = tickets.groupby("Ticket Priority", observed=True)[
+            "Customer Satisfaction Rating"
+        ].mean().reset_index()
+        fig = px.bar(
+            sat_by_priority,
+            x="Ticket Priority",
+            y="Customer Satisfaction Rating",
+            range_y=[0, 5],
+        )
+        st.plotly_chart(fig, width="stretch", key="eda_sat_by_priority")
+
+        spread_rows = []
+        outcome = "Customer Satisfaction Rating"
         outcome_std = tickets[outcome].std()
-        for col in ["Ticket Type", "Ticket Priority", "Ticket Channel", "Ticket Status"]:
-            group_means = tickets.groupby(col, observed=True)[outcome].mean()
+        for column in ["Ticket Type", "Ticket Priority", "Ticket Channel", "Ticket Status"]:
+            group_means = tickets.groupby(column, observed=True)[outcome].mean()
             spread = group_means.max() - group_means.min()
-            spread_rows.append({
-                "Field": col, "Outcome": outcome, "Group-mean spread": round(spread, 3),
-                "Outcome std. dev.": round(outcome_std, 3),
-                "Spread as % of std. dev.": f"{spread / outcome_std:.1%}",
-            })
-    st.dataframe(pd.DataFrame(spread_rows), width="stretch", hide_index=True)
+            spread_rows.append(
+                {
+                    "Field": column,
+                    "Group-mean spread": round(spread, 3),
+                    "Outcome std. dev.": round(outcome_std, 3),
+                    "Spread as % of std. dev.": f"{spread / outcome_std:.1%}",
+                }
+            )
+        st.caption(
+            "Across every categorical field, the gap between the best- and worst-scoring groups is tiny "
+            "relative to normal rating variation."
+        )
+        st.dataframe(pd.DataFrame(spread_rows), width="stretch", hide_index=True)
+        st.warning(
+            f"{eda_metrics['impossible_order_rate']:.1%} of resolved tickets record resolution before the "
+            "first response. The support file is descriptive volume data—not a defensible sentiment or risk "
+            "signal.",
+            icon=":material/warning:",
+        )
 
-    st.warning(
-        f"{eda_metrics['impossible_order_rate']:.1%} of resolved tickets record resolution before the first "
-        "response. Combined with the absent customer text and flat satisfaction results above, the support "
-        "file is descriptive volume data—not a defensible sentiment or risk signal.",
-        icon=":material/warning:",
-    )
+    with usage_detail:
+        st.markdown("#### Usage is stable per customer over time")
+        st.caption(
+            "Each customer's average Active Days in January 2023 against May 2023. A persistent metric should "
+            "land near the diagonal; pure noise would look like a formless cloud."
+        )
+        first_month = eda_metrics["first_month"]
+        last_month = eda_metrics["last_month"]
+        persistence = usage[usage["Month"] == first_month].groupby("Customer ID")[
+            "Active Days"
+        ].mean().rename("First month").to_frame()
+        persistence["Last month"] = usage[usage["Month"] == last_month].groupby("Customer ID")[
+            "Active Days"
+        ].mean()
+        persistence = persistence.dropna()
+        fig = px.scatter(
+            persistence,
+            x="First month",
+            y="Last month",
+            opacity=0.25,
+            render_mode="webgl",
+        )
+        fig.update_traces(marker=dict(size=5))
+        st.plotly_chart(fig, width="stretch", key="eda_persistence")
+        st.caption(
+            f"First-to-last-month correlation: **{eda_metrics['active_days_persistence']:.2f}** across "
+            f"{len(persistence):,} customers."
+        )
 
-    st.caption(
-        "Full write-up of what this means for the model: see \"Data quality audit\" in the Documentation "
-        "tab."
-    )
+        st.markdown("#### Usage scales with plan tier and product")
+        st.caption(
+            "Higher plan tiers use the products more deeply, while each product retains its own natural "
+            "activity baseline. Both patterns are why the risk model compares like-for-like peers."
+        )
+        plan_chart, product_chart = st.columns(2)
+        with plan_chart:
+            fig = px.bar(
+                eda_metrics["usage_by_plan"],
+                x="Plan Type",
+                y="Active Days",
+                title="Average active days by plan",
+            )
+            st.plotly_chart(fig, width="stretch", key="eda_usage_by_plan")
+        with product_chart:
+            fig = px.bar(
+                eda_metrics["usage_by_product"],
+                x="Product",
+                y="Active Days",
+                title="Average active days by product",
+            )
+            st.plotly_chart(fig, width="stretch", key="eda_usage_by_product")
+        st.caption(
+            f"Active Days rises from **{eda_metrics['usage_by_plan'].iloc[0]['Active Days']:.1f} on Free** "
+            f"to **{eda_metrics['usage_by_plan'].iloc[-1]['Active Days']:.1f} on Enterprise**; Integrations "
+            f"Used rises **{eda_metrics['integration_tier_ratio']:.1f}×** across the same tiers."
+        )
 
 # --- Overview --------------------------------------------------------------
 with tab_overview:

@@ -2,7 +2,7 @@ import unittest
 
 import pandas as pd
 
-from analysis.dashboard_metrics import build_eda_metrics, build_raw_file_summary
+from analysis.dashboard_metrics import build_eda_metrics
 
 
 class DashboardMetricsTests(unittest.TestCase):
@@ -37,16 +37,6 @@ class DashboardMetricsTests(unittest.TestCase):
                 "Integrations Used": [1.0, 1.0, 5.0, 7.0],
             }
         )
-
-    def test_raw_file_summary_lists_all_three_source_files(self):
-        summary = build_raw_file_summary(self.customers, self.tickets, self.usage)
-
-        self.assertEqual(
-            summary["File"].tolist(),
-            ["customers.csv", "customer_support_tickets.csv", "product_usage.csv"],
-        )
-        self.assertEqual(summary["Rows"].tolist(), [2, 3, 4])
-        self.assertEqual(summary["Columns"].tolist(), [2, 3, 5])
 
     def test_eda_metrics_capture_pitch_evidence(self):
         metrics = build_eda_metrics(self.customers, self.tickets, self.usage)

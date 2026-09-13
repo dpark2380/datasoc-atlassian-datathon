@@ -23,25 +23,30 @@ what Atlassian should do about each one.
 
 The challenge statement, then the stakes. Do not open with methodology.
 
-Line to say: Atlassian has more than 350,000 customers and cannot call all of
-them, so the question is which account to work next.
+Line to say: Atlassian's land-and-expand model depends on adoption, so the
+question is which account needs intervention before low usage stalls
+expansion.
 
-## Slide 2. Business Stakes (45 seconds)
+## Slide 2. Business Stakes: Adoption Drives Expansion (45 seconds)
 
 Serves: Story.
 
-- 57,334 customers hold over 85% of Cloud ARR (Q4 FY26 shareholder letter,
-  filed with the SEC 6 August 2026).
-- Against more than 350,000 customers total, that is about one account in six.
-- No single customer is more than 5% of total revenue (FY26 10-K), so this is
-  tens of thousands of accounts, not a handful of whales someone already
-  watches by name.
+- MCP adopters grow ARR 2x faster than non-adopters, are significantly
+  stickier, and expand paid seats faster. Rovo adopters grow ARR more than 2x
+  faster.
+- Rovo adopters complete 20% more Jira work items and create or edit 25% more
+  Confluence pages. Atlassian measures customer value in the same product
+  activity our model uses.
+- The solution must scale efficiently: FY26 revenue grew 26% while cost of
+  revenues grew 11%, employee compensation inside that cost line fell $56.2M,
+  and Atlassian attributed part of its Q4 margin gain to support efficiency.
 
-Line to say: the concentration is real, but it is spread across tens of
-thousands of accounts, which is exactly the range where a person cannot watch
-each one and a model can.
+Line to say: adoption moves with expansion while support is being scaled more
+efficiently, so telemetry has to identify which adoption gaps need action.
 
-Keep Cloud ARR and total ARR apart. The 85% is Cloud ARR.
+Sources: Atlassian Q4 FY26 shareholder letter and FY26 10-K. The adoption
+figures are reported associations, not proof that adoption alone causes the
+growth difference.
 
 ## Slide 3. Data Limitations (60 seconds)
 
@@ -186,7 +191,10 @@ Have these built but not in the main flow.
    contexts a customer connects", and 98% of MCP users are also active in the
    Jira UI in the same month, which answers the objection that integration
    traffic might be machines rather than people.
-6. The live risk scorer. Pick a customer, show the score, the reason, and the
+6. Revenue concentration: 57,334 customers hold over 85% of Cloud ARR, with no
+   single customer above 5% of total revenue. Use only if asked about portfolio
+   scale, and keep Cloud ARR separate from GAAP revenue.
+7. The live risk scorer. Pick a customer, show the score, the reason, and the
    recommended action on one screen.
 
 ## Do not put these on a slide
