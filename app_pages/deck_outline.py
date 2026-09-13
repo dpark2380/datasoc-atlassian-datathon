@@ -154,18 +154,20 @@ SLIDES = [
         "title": "8. How We Define Risk",
         "time": "40 sec",
         "serves": "Analysis into Solution",
-        "headline": "Compare every account with peers who have the same plan and primary product.",
+        "headline": "Forecast next-month disengagement, then explain it against fair peers.",
         "figure": (
-            "A four-step pipeline: **Five-month usage → Plan × product peer group → Bottom 25% "
-            "engagement → Value and embeddedness weighting**. Beneath it, show one example customer "
-            "against its peer median using the Risk Scorer comparison chart."
+            "A two-lane model diagram. **Early warning:** Months 1–4 usage → predict bottom-quartile "
+            "engagement in Month 5. **Action layer:** Five-month usage → plan × product peer group → "
+            "bottom 25% engagement → value and embeddedness weighting. End both lanes at one "
+            "customer card with forecast probability, risk category, and next action."
         ),
         "points": [
+            "The forecast provides a one-month warning using an observed future usage outcome.",
             "A Free Loom account is never judged against an Enterprise Jira account.",
-            "The rule surfaces low engagement; it does not claim to predict observed churn because no churn label exists.",
+            "Neither layer claims to predict contract churn because no churn label exists.",
             "The final 0–100 score ranks urgency after the at-risk rule is applied.",
         ],
-        "line": "Risk here means unusually low engagement for a fair peer group, not a black-box probability of churn.",
+        "line": "One layer tells us who may disengage next month; the other explains who they are and what to do.",
     },
     {
         "title": "9. Results: Who Needs Action?",
@@ -198,14 +200,16 @@ SLIDES = [
         "title": "10. Validation: Can We Trust the Result?",
         "time": "35 sec",
         "serves": "Analysis & Insights",
-        "headline": "The prioritisation is stable, while trend claims are not.",
+        "headline": "The forecast separates next-month disengagement, and the action queue stays stable.",
         "figure": (
-            "A four-card validation scorecard: **0.63–0.98 metric reliability**, **99.1% bootstrap "
-            "agreement**, **0.997 real-vs-shuffled trend spread**, and **18.3% anomaly overlap**. "
-            "Use green for stable score evidence and amber for the rejected trend evidence."
+            "A two-panel validation slide. **Forecast panel:** held-out ROC curve with **0.921 AUC**, "
+            "**74.1% precision**, **70.4% recall**, and **n = 1,664**. **Prioritisation panel:** "
+            "**99.1% bootstrap agreement**, **0.63–0.98 metric reliability**, and **0.997 "
+            "real-vs-shuffled trend spread**. Use the trend result as evidence for rejecting trend claims."
         ),
         "points": [
-            "Reliability weights are measured from repeat observations rather than chosen by hand.",
+            "The supervised outcome is Month-5 bottom-quartile engagement, not churn or renewal.",
+            "The forecast is tested out of sample; the descriptive risk queue is tested for stability.",
             "Sensitivity tests leave rankings and population sizes largely unchanged.",
             "The model deliberately says low engagement, not declining usage, because apparent slopes do not persist.",
         ],
@@ -236,16 +240,17 @@ SLIDES = [
         "serves": "Analysis & Insights",
         "headline": "Choose the method the available evidence can actually support.",
         "figure": (
-            "A three-row decision table: **Sentiment model—rejected: no text**; **Supervised churn "
-            "model—rejected: no outcome label**; **Peer-relative usage rule—selected: repeated "
-            "behaviour and explainable actions**. Add clustering and anomaly detection as validation, "
-            "not competing production models."
+            "A four-row decision table: **Sentiment model—rejected: no text**; **Supervised churn "
+            "model—rejected: no churn outcome label**; **Month-5 usage forecaster—selected: an "
+            "observed next-month engagement label and 0.921 held-out AUC**; **Peer-relative usage "
+            "rule—selected: explainable prioritisation and actions**."
         ),
         "points": [
-            "Do not show accuracy, precision, recall, or AUC: there is no ground-truth churn label.",
-            "The selected method is transparent enough for a CSM to explain to a customer.",
+            "Call the supervised output disengagement risk, not churn probability.",
+            "Use the forecast to identify who may drop next month and the peer-relative rule to explain context and prescribe action.",
+            "Clustering and anomaly detection diagnose behaviour; they are not competing production models.",
         ],
-        "line": "The simplest defensible model beat the most impressive-sounding model we could not validate.",
+        "line": "We use prediction for an outcome we can observe and transparent rules for decisions people must explain.",
     },
     {
         "title": "13. Strategies for Retention",
@@ -337,7 +342,7 @@ with st.expander("Claims to leave out", expanded=False):
     st.markdown(
         "- Generic retention myths such as ‘5× cheaper to retain’ or ‘5% retention raises profit 25–95%’.\n"
         "- Product-specific adoption claims as the main business-stakes story; they require too much context.\n"
-        "- Accuracy, precision, recall, AUC, or churn probability without an outcome label.\n"
+        "- Accuracy, precision, recall, AUC, or churn probability for contract churn without a churn outcome label.\n"
         "- Causal claims that usage or integration alone produces revenue growth.\n"
         "- Any conversion of Cloud ARR shares into GAAP revenue dollars."
     )

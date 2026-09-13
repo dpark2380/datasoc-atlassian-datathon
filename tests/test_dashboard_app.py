@@ -28,6 +28,25 @@ class DashboardAppTests(unittest.TestCase):
             <= card_headings
         )
 
+    def test_risk_definitions_include_an_action_for_every_category(self):
+        app = AppTest.from_file(str(ROOT / "streamlit_app.py"), default_timeout=60).run()
+
+        self.assertFalse(app.exception)
+        rendered = "\n".join(markdown.value for markdown in app.markdown)
+        self.assertIn("**Monitor Only — recommended action:** No action, track only.", rendered)
+        self.assertIn(
+            "**New & Struggling — recommended action:** Milestone-tracked onboarding review",
+            rendered,
+        )
+        self.assertIn(
+            "**Established & Low Engagement — recommended action:** Automated feature-specific play",
+            rendered,
+        )
+        self.assertIn(
+            "**High-Value Disengaged — recommended action:** Executive Business Review",
+            rendered,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -69,6 +69,21 @@ class DeckOutlineAppTests(unittest.TestCase):
         self.assertIn("Increase realised customer value", normalised_deck_doc)
         self.assertIn("Scale Customer Success", normalised_deck_doc)
 
+    def test_method_slide_distinguishes_usage_forecasting_from_churn_prediction(self):
+        app = self._load_deck_page()
+
+        method_slide = next(
+            expander for expander in app.expander if expander.label.startswith("12.")
+        )
+        rendered = "\n".join(markdown.value for markdown in method_slide.markdown)
+        self.assertIn("Supervised churn model—rejected", rendered)
+        self.assertIn("Month-5 usage forecaster—selected", rendered)
+        self.assertIn("0.921", rendered)
+
+        deck_doc = (ROOT / "docs" / "deck-outline.md").read_text(encoding="utf-8")
+        self.assertIn("Supervised churn model | Rejected", deck_doc)
+        self.assertIn("Month-5 usage forecaster | Selected", deck_doc)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import plotly.graph_objects as go
@@ -30,6 +31,17 @@ class ChartStylingTests(unittest.TestCase):
         self.assertEqual(rendered_figure.layout.paper_bgcolor, "#FFFFFF")
         self.assertEqual(rendered_figure.layout.plot_bgcolor, "#FFFFFF")
         self.assertIsNone(plotly_chart.call_args.kwargs["theme"])
+
+    def test_every_chart_page_uses_the_shared_white_renderer(self):
+        app_pages = Path(__file__).parent.parent / "app_pages"
+        direct_renderers = []
+        for page in app_pages.glob("*.py"):
+            if page.name == "chart_styling.py":
+                continue
+            if "st.plotly_chart(" in page.read_text(encoding="utf-8"):
+                direct_renderers.append(page.name)
+
+        self.assertEqual(direct_renderers, [])
 
 
 if __name__ == "__main__":

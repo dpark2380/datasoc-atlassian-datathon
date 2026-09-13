@@ -177,22 +177,30 @@ available signal of customer engagement.
 
 Time: 40 seconds. Purpose: Analysis into Solution.
 
-Headline: Compare every account with peers who have the same plan and primary
-product.
+Headline: Forecast next-month disengagement, then explain it against fair
+peers.
 
-Figure to add: a four-step pipeline: **Five-month usage -> Plan x product
-peer group -> Bottom 25% engagement -> Value and embeddedness weighting**.
-Beneath it, show one Risk Scorer peer-comparison chart for an example
-customer.
+Figure to add: a two-lane model diagram.
+
+- **Early warning:** Months 1-4 usage -> predict bottom-quartile engagement
+  in Month 5.
+- **Action layer:** Five-month usage -> Plan x product peer group -> Bottom
+  25% engagement -> Value and embeddedness weighting.
+
+End both lanes at one customer card showing forecast probability, risk
+category, and next action.
 
 Put on the slide:
 
+- The forecast provides a one-month warning using an observed future usage
+  outcome.
 - A Free Loom account is not judged against an Enterprise Jira account.
-- The rule detects low engagement; it is not an observed churn probability.
+- Neither layer claims to predict contract churn because no churn label
+  exists.
 - The final 0-100 score ranks urgency after the at-risk rule is applied.
 
-Line to say: Risk here means unusually low engagement for a fair peer group,
-not a black-box probability of churn.
+Line to say: One layer tells us who may disengage next month; the other
+explains who they are and what to do.
 
 ## Slide 9. Results: Who Needs Action?
 
@@ -223,21 +231,27 @@ one account in four enters an action queue.
 
 Time: 35 seconds. Purpose: Analysis and Insights.
 
-Headline: The prioritisation is stable, while trend claims are not.
+Headline: The forecast separates next-month disengagement, and the action
+queue stays stable.
 
-Figure to add: a four-card validation scorecard:
+Figure to add: a two-panel validation slide.
 
-- **0.63-0.98:** reliability range across the five usage metrics.
-- **99.1%:** bootstrap agreement with the at-risk flag.
-- **0.997:** real-vs-shuffled trend spread ratio, showing no reliable trend.
-- **18.3%:** overlap between anomaly flags and at-risk flags, showing they
-  capture different concepts.
+- **Forecast panel:** held-out ROC curve with **0.921 AUC**, **74.1%
+  precision**, **70.4% recall**, and **n = 1,664**.
+- **Prioritisation panel:** **99.1% bootstrap agreement**, **0.63-0.98 metric
+  reliability**, and **0.997 real-vs-shuffled trend spread**.
 
-Use green for stable-score evidence and amber for the rejected trend
-evidence.
+Use the trend result as amber evidence for rejecting trend claims; use the
+held-out and bootstrap results as green evidence for the two valid model
+outputs.
 
-Put on the slide: one short interpretation under each figure. Avoid a dense
-statistical table.
+Put on the slide:
+
+- The supervised outcome is Month-5 bottom-quartile engagement, not churn or
+  renewal.
+- The forecast is tested out of sample; the descriptive risk queue is tested
+  for stability.
+- Avoid a dense statistical table.
 
 Line to say: We kept the part the data can reproduce and removed the part it
 cannot.
@@ -272,22 +286,26 @@ Time: 30 seconds. Purpose: Analysis and Insights.
 
 Headline: Choose the method the available evidence can actually support.
 
-Figure to add: a three-row decision table:
+Figure to add: a four-row decision table:
 
 | Method | Decision | Why |
 |---|---|---|
 | Sentiment model | Rejected | No customer-written text |
-| Supervised churn model | Rejected | No outcome label |
-| Peer-relative usage rule | Selected | Repeated behaviour and explainable actions |
+| Supervised churn model | Rejected | No contract churn outcome label |
+| Month-5 usage forecaster | Selected | Observed next-month engagement label and 0.921 held-out AUC |
+| Peer-relative usage rule | Selected | Explainable prioritisation and actions |
 
 Add clustering and anomaly detection in a small footer labelled
-**independent validation**, not as competing production models.
+**behavioural diagnosis**, not as competing production models.
 
-Put on the slide: the table and one statement: no accuracy, precision,
-recall, AUC, or churn probability is valid without ground truth.
+Put on the slide:
 
-Line to say: The simplest defensible model beat the most
-impressive-sounding model we could not validate.
+- Call the supervised output disengagement risk, not churn probability.
+- Use the forecast to identify who may drop next month and the peer-relative
+  rule to explain context and prescribe action.
+
+Line to say: We use prediction for an outcome we can observe and transparent
+rules for decisions people must explain.
 
 ## Slide 13. Strategies for Retention
 
@@ -384,8 +402,8 @@ Build these, but keep them out of the timed narrative:
   raises profit 25-95%".
 - Product-specific adoption claims as the main business-stakes story; they
   require too much context for this point in the pitch.
-- Accuracy, precision, recall, AUC, or churn probability without an outcome
-  label.
+- Accuracy, precision, recall, AUC, or churn probability for contract churn
+  without a churn outcome label.
 - Causal claims that usage or integration alone produces revenue growth.
 - Any conversion of Cloud ARR shares into GAAP revenue dollars.
 

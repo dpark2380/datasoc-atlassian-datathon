@@ -444,9 +444,13 @@ with tab_risk:
     counts = filtered["Risk Category"].value_counts().reindex(CATEGORY_ORDER).reset_index()
     fig = px.bar(counts, x="Risk Category", y="count")
     render_plotly_chart(fig, width="stretch", key="dash_chart_4")
+    actions_by_category = (
+        risk.groupby("Risk Category", observed=True)["Recommended Action"].first().to_dict()
+    )
     st.markdown(
         "- **Monitor Only**: not at risk. Usage sits above the bottom quarter for this customer's plan "
         "and product peer group. No action.\n"
+        f"    - **Monitor Only — recommended action:** {actions_by_category['Monitor Only']}\n"
         "    - At Risk = Engagement Percentile ≤ 25, where Engagement Percentile is this customer's "
         "Engagement Composite ranked (percentile, 0-100) only against customers on the same Plan Type "
         "and Primary Product.\n"
@@ -457,6 +461,7 @@ with tab_risk:
         "Percentile > 25).\n"
         "- **New & Struggling**: at risk, and recently acquired relative to the rest of the customer "
         "base. Reads as an onboarding problem, not churn.\n"
+        f"    - **New & Struggling — recommended action:** {actions_by_category['New & Struggling']}\n"
         "    - Recently acquired = Account Age ≤ the 25th percentile of Account Age across *all* "
         "customers, where Account Age = (2023-05-31 minus Account Created Date), in days.\n"
         "    - This is a relative quartile, not an absolute cutoff like \"under 90 days\": no customer "
@@ -464,11 +469,15 @@ with tab_risk:
         "acquired\" means the youngest 25% of the base, not literally new.\n"
         "- **Established & Low Engagement**: at risk, longer-tenured, and either lower plan tier or lower "
         "embeddedness. A real but lower-stakes churn risk.\n"
+        f"    - **Established & Low Engagement — recommended action:** "
+        f"{actions_by_category['Established & Low Engagement']}\n"
         "    - Applies when At Risk is true, Recently Acquired is false, and High-Value (defined below) "
         "is also false.\n"
         "- **High-Value Disengaged**: at risk, longer-tenured, and either Enterprise/Premium tier or "
         "heavily integrated (top quartile of Collaborators + Integrations Used). The account most "
         "worth protecting.\n"
+        f"    - **High-Value Disengaged — recommended action:** "
+        f"{actions_by_category['High-Value Disengaged']}\n"
         "    - High-Value = Plan Type is Enterprise or Premium, OR Embeddedness Percentile ≥ 75.\n"
         "    - Embeddedness Percentile = the percentile rank (0-100), across *all* customers, of "
         "Collaborators and Integrations Used, each standardised and then weighted by its measured "
@@ -700,7 +709,7 @@ with tab_segments:
                     "Attribution identifies which specific telemetry dimension pushed each outlier beyond the decision boundary. "
                     "The largest drivers are automated API syncs (High Product Actions / High Active Days) and single-user automation accounts (Low Collaborators)."
                 )
-                st.plotly_chart(fig_driver, width="stretch", key="dash_anomaly_drivers")
+                render_plotly_chart(fig_driver, width="stretch", key="dash_anomaly_drivers")
 
     st.subheader("How this connects to the Risk Categories")
     st.caption(
@@ -775,7 +784,7 @@ with tab_segments:
                 yaxis=dict(range=[0, 1]),
                 legend=dict(yanchor="bottom", y=0.05, xanchor="right", x=0.95),
             )
-            st.plotly_chart(fig_roc, width="stretch", key="supervised_roc_curve")
+            render_plotly_chart(fig_roc, width="stretch", key="supervised_roc_curve")
 
         with col_feat:
             st.markdown("##### Top Leading Indicators of Disengagement")
@@ -802,7 +811,7 @@ with tab_segments:
                 color_discrete_sequence=["#0052CC"],
             )
             fig_feat.update_layout(height=380)
-            st.plotly_chart(fig_feat, width="stretch", key="supervised_feature_importances")
+            render_plotly_chart(fig_feat, width="stretch", key="supervised_feature_importances")
 
         st.markdown("##### Out-of-Sample Confusion Matrix (Test Set N = 1,664)")
         cm = rf["confusion_matrix"]
@@ -825,7 +834,7 @@ with tab_segments:
             )
             fig_cm.update_traces(text=cm_annotations, texttemplate="%{text}", textfont=dict(size=13))
             fig_cm.update_layout(height=320, coloraxis_showscale=False, margin=dict(t=20, b=20, l=20, r=20))
-            st.plotly_chart(fig_cm, width="stretch", key="supervised_confusion_matrix")
+            render_plotly_chart(fig_cm, width="stretch", key="supervised_confusion_matrix")
 
         with col_cm_text:
             st.markdown(
