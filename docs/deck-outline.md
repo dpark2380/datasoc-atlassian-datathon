@@ -5,8 +5,9 @@ last year: title, problem, business stakes, one decisive finding, evidence,
 method, results, scenarios, recommendations, and a final product reveal. The
 content is changed completely for this problem and solution.
 
-The timings total 7 minutes 25 seconds, leaving 35 seconds of buffer in an
-8-minute presentation. Solution and Recommendation carries 35% of the marks,
+The timings total 7 minutes 55 seconds, leaving 5 seconds of buffer in an
+8-minute presentation, tight enough that it is worth re-timing after adding
+slide 10. Solution and Recommendation carries 35% of the marks,
 Analysis and Insights 30%, Presentation and Q&A 20%, and Story and Problem
 Statement 15%.
 
@@ -227,7 +228,41 @@ Put on the slide: the headline, the chart, and the four category labels only.
 Line to say: The model's first useful decision is who not to contact; only
 one account in four enters an action queue.
 
-## Slide 10. Validation: Can We Trust the Result?
+## Slide 10. Usage Segments and Anomaly Detection
+
+Time: 30 seconds. Purpose: Analysis and Insights.
+
+Headline: Unsupervised clustering and anomaly detection corroborate the risk
+categories, independently.
+
+Figure to add: the Dashboard's k=4 usage-cluster scatter (Usage Volume vs
+Integration Depth), with the four segment counts labelled: **Low engagement
+(3,154)**, **Active, shallow integration (2,318)**, **Integration-heavy,
+moderate usage (1,807)**, **Power users (1,041)**. Beside it, one card:
+**416 of 8,320 customers (5.0%) flagged as usage anomalies**, **only 18.3%
+overlap with At Risk**.
+
+Put on the slide:
+
+- KMeans on the five usage metrics, standardised within each customer's
+  Primary Product so a Loom account is not penalised for a lower category
+  baseline than Jira.
+- k=2 is the cleanest split (silhouette 0.40) but mostly restates the
+  plan-tier finding; k=4 (silhouette 0.30) trades some separation to split
+  usage volume from integration depth instead.
+- Isolation Forest (5% contamination) flags a mostly different population
+  from the At Risk rule: unusual usage shape, not just low usage level.
+- Both are unsupervised, since there is no churn label to train or validate
+  a supervised model against; each is evaluated on internal statistical
+  properties, not prediction accuracy.
+
+Line to say: This is independent evidence, not decoration: the categories we
+built by hand and the segments KMeans found on its own point at the same
+customers.
+
+Source: `findings-ml-segments.md`.
+
+## Slide 11. Validation: Can We Trust the Result?
 
 Time: 35 seconds. Purpose: Analysis and Insights.
 
@@ -258,7 +293,7 @@ cannot.
 
 Sources: `findings-reliability.md` and `findings-sensitivity.md`.
 
-## Slide 11. Customer Scenarios: Score to Action
+## Slide 12. Customer Scenarios: Score to Action
 
 Time: 35 seconds. Purpose: Solution and Recommendation.
 
@@ -280,7 +315,7 @@ Put on the slide:
 Line to say: Urgency, likely cause, and appropriate cost of response are not
 the same for every account.
 
-## Slide 12. Method Selection
+## Slide 13. Method Selection
 
 Time: 30 seconds. Purpose: Analysis and Insights.
 
@@ -307,7 +342,7 @@ Put on the slide:
 Line to say: We use prediction for an outcome we can observe and transparent
 rules for decisions people must explain.
 
-## Slide 13. Strategies for Retention
+## Slide 14. Strategies for Retention
 
 Time: 35 seconds. Purpose: Solution and Recommendation.
 
@@ -340,7 +375,7 @@ reward disengagement.
 
 Source: `research-cs-playbook-actions.md`.
 
-## Slide 14. Strategies for Value Protection and Expansion
+## Slide 15. Strategies for Value Protection and Expansion
 
 Time: 30 seconds. Purpose: Solution and Recommendation.
 
@@ -370,7 +405,7 @@ Put on the slide:
 Line to say: Protect current value first, then test expansion where a specific
 adoption gap is visible.
 
-## Slide 15. Introducing the Customer Risk Playbook
+## Slide 16. Introducing the Customer Risk Playbook
 
 Time: 20 seconds. Purpose: product reveal and close.
 
@@ -400,11 +435,10 @@ Build these, but keep them out of the timed narrative:
 1. Full ticket data-quality audit and impossible timestamp examples.
 2. Reliability table and trend permutation distributions.
 3. Cutoff, weighting, and bootstrap sensitivity tables.
-4. Cluster profiles and anomaly-overlap detail.
-5. Full action-playbook evidence and ownership model.
-6. Revenue concentration and company-specific business context, only if a
+4. Full action-playbook evidence and ownership model.
+5. Revenue concentration and company-specific business context, only if a
    judge asks.
-7. Live Risk Scorer walkthrough.
+6. Live Risk Scorer walkthrough.
 
 ## Claims to leave out
 
