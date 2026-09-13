@@ -29,12 +29,18 @@ context where shown at all):
   - Resolution Hours, Ticket Status: incoherent timestamps / no
     relationship to usage.
   - Ticket volume per customer: flat across every segment (~1.0-1.02
-    tickets/customer everywhere; every customer has at least one ticket).
+    tickets/customer everywhere). Every one of the 8,320 customers has at
+    least one ticket, against ~3,006 expected under random assignment --
+    customers.csv is the deduplicated identity list PROJECTED FROM the
+    ticket file, not an independent table tickets were randomly matched to.
   - No free-text field exists in this dataset at all.
   - Industry / Region / Company Size: flat, no relationship to usage.
-  - One narrow exception: a ticket's Product Purchased field is 100%
-    consistent with the customer's real product_usage.csv rows -- kept
-    only as a validity note, not used as a signal.
+  - The 100% match between a ticket's Product Purchased and the customer's
+    product_usage.csv rows is NOT independent validation -- it's circular.
+    product_usage.csv was generated per customer per ticket-mentioned
+    product (verified: exact product SET matches between tickets and usage
+    for 100% of customers), so this consistency was guaranteed by
+    construction. See docs/research-ticket-data-uses.md.
 
 Run: .venv/bin/python analysis/eda.py
 Writes: analysis/cleaned_tickets.csv   (ticket-level, descriptive only)
