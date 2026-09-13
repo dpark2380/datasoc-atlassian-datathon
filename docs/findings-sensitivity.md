@@ -8,17 +8,36 @@ place.
 
 ## 1. At Risk cutoff (currently bottom 25% within Plan Type x Product)
 
-|   Cutoff % |   Customers flagged |   Share of base |   % Enterprise |   % Premium |   % Standard |   % Free |
-|-----------:|--------------------:|----------------:|---------------:|------------:|-------------:|---------:|
-|         15 |                1239 |           0.149 |          0.144 |       0.282 |        0.398 |    0.177 |
-|         20 |                1656 |           0.199 |          0.144 |       0.281 |        0.399 |    0.177 |
-|         25 |                2072 |           0.249 |          0.144 |       0.281 |        0.398 |    0.177 |
-|         30 |                2487 |           0.299 |          0.144 |       0.281 |        0.398 |    0.177 |
-|         35 |                2904 |           0.349 |          0.144 |       0.281 |        0.398 |    0.177 |
+An earlier version of this check compared the tier mix of who gets flagged
+across cutoffs and reported it as stable evidence of robustness. That was
+wrong, not in the arithmetic but in what the arithmetic could show: Engagement
+Percentile is a rank computed separately within each Plan Type x Product
+group, so cutting at any threshold selects that same share of every group by
+construction. The tier mix of the flagged population is guaranteed to equal
+the tier mix of the whole population at every cutoff. It was an identity
+presented as a finding, caught on inspection of the dashboard rather than by
+us, and it has been replaced with the check below.
 
-The tier mix of who's flagged stays close to stable across cutoffs from
-15% to 35%: this isn't a knife-edge choice where a slightly different
-percentage would flag a completely different population.
+What can actually move with the cutoff is the four-way Risk Category split,
+since category also depends on tenure and the high-value gate, neither of
+which is a percentile within group:
+
+|   Cutoff % |   Monitor Only |   New & Struggling |   Established & Low Engagement |   High-Value Disengaged |
+|-----------:|---------------:|-------------------:|-------------------------------:|------------------------:|
+|         15 |           7081 |                306 |                            538 |                     395 |
+|         20 |           6664 |                407 |                            722 |                     527 |
+|         25 |           6248 |                518 |                            893 |                     661 |
+|         30 |           5833 |                630 |                           1069 |                     788 |
+|         35 |           5416 |                737 |                           1249 |                     918 |
+
+Every category's count grows roughly in proportion as the cutoff loosens
+from 15% to 35%, and the ratios between categories stay close to stable
+(New & Struggling to Established & Low Engagement runs 0.57 to 0.59;
+High-Value Disengaged to Established & Low Engagement runs 0.73 to 0.74).
+That is not guaranteed by how At Risk is defined, since it depends on the
+joint distribution of tenure and embeddedness among the customers each wider
+cutoff adds. The cutoff choice changes how many accounts are flagged, as it
+should, without reshuffling which category dominates the result.
 
 ## 2. Embeddedness weight (currently Integrations Used weighted 2x Collaborators)
 

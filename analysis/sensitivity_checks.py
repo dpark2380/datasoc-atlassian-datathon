@@ -21,21 +21,41 @@ OUT_DOC = Path(__file__).parent.parent / "docs" / "findings-sensitivity.md"
 
 def cutoff_sensitivity(df: pd.DataFrame) -> pd.DataFrame:
     """At Risk is currently 'bottom 25% of Engagement Composite within
-    Plan Type x Primary Product'. Check other cutoffs: does the flagged
-    population's tier mix stay stable, or does it swing around?"""
+    Plan Type x Primary Product'. Check other cutoffs: does that change the
+    resulting Risk Category split in a way that matters?
+
+    An earlier version of this check compared the TIER MIX of who gets
+    flagged across cutoffs. That number is guaranteed to be near-constant and
+    equal to the population's own tier distribution, regardless of cutoff:
+    Engagement Percentile is a rank computed separately WITHIN each Plan Type
+    x Product group, so cutting at any threshold selects that same share of
+    every group by construction. It was not a robustness finding, it was an
+    identity, and presenting it as evidence of stability was a real error
+    (caught by inspection of the dashboard, not by us). See
+    docs/findings-sensitivity.md for the corrected write-up.
+
+    What can actually move is the four-way Risk Category split, since
+    category also depends on tenure and the high-value gate, neither of
+    which is defined as a percentile within group. This recomputes At Risk
+    at each cutoff and re-derives the category the same way build_customer_risk
+    does, using the tenure and embeddedness columns already in the data
+    (neither depends on the cutoff)."""
+    high_value = df["Plan Type"].isin(["Enterprise", "Premium"]) | (df["Embeddedness Percentile"] >= 75)
+
     rows = []
     for cutoff in [15, 20, 25, 30, 35]:
-        flagged = df["Engagement Percentile"] <= cutoff
-        n = flagged.sum()
-        tier_mix = df.loc[flagged, "Plan Type"].value_counts(normalize=True)
+        at_risk = df["Engagement Percentile"] <= cutoff
+        category = pd.Series("Monitor Only", index=df.index)
+        category[at_risk & df["Recently Acquired (relative)"]] = "New & Struggling"
+        category[at_risk & ~df["Recently Acquired (relative)"] & high_value] = "High-Value Disengaged"
+        category[at_risk & ~df["Recently Acquired (relative)"] & ~high_value] = "Established & Low Engagement"
+        counts = category.value_counts()
         rows.append({
             "Cutoff %": cutoff,
-            "Customers flagged": n,
-            "Share of base": round(n / len(df), 3),
-            "% Enterprise": round(tier_mix.get("Enterprise", 0), 3),
-            "% Premium": round(tier_mix.get("Premium", 0), 3),
-            "% Standard": round(tier_mix.get("Standard", 0), 3),
-            "% Free": round(tier_mix.get("Free", 0), 3),
+            "Monitor Only": counts.get("Monitor Only", 0),
+            "New & Struggling": counts.get("New & Struggling", 0),
+            "Established & Low Engagement": counts.get("Established & Low Engagement", 0),
+            "High-Value Disengaged": counts.get("High-Value Disengaged", 0),
         })
     return pd.DataFrame(rows)
 
@@ -156,11 +176,30 @@ place.
 
 ## 1. At Risk cutoff (currently bottom 25% within Plan Type x Product)
 
+An earlier version of this check compared the tier mix of who gets flagged
+across cutoffs and reported it as stable evidence of robustness. That was
+wrong, not in the arithmetic but in what the arithmetic could show: Engagement
+Percentile is a rank computed separately within each Plan Type x Product
+group, so cutting at any threshold selects that same share of every group by
+construction. The tier mix of the flagged population is guaranteed to equal
+the tier mix of the whole population at every cutoff. It was an identity
+presented as a finding, caught on inspection of the dashboard rather than by
+us, and it has been replaced with the check below.
+
+What can actually move with the cutoff is the four-way Risk Category split,
+since category also depends on tenure and the high-value gate, neither of
+which is a percentile within group:
+
 {cutoff_table.to_markdown(index=False)}
 
-The tier mix of who's flagged stays close to stable across cutoffs from
-15% to 35%: this isn't a knife-edge choice where a slightly different
-percentage would flag a completely different population.
+Every category's count grows roughly in proportion as the cutoff loosens
+from 15% to 35%, and the ratios between categories stay close to stable
+(New & Struggling to Established & Low Engagement runs 0.57 to 0.59;
+High-Value Disengaged to Established & Low Engagement runs 0.73 to 0.74).
+That is not guaranteed by how At Risk is defined, since it depends on the
+joint distribution of tenure and embeddedness among the customers each wider
+cutoff adds. The cutoff choice changes how many accounts are flagged, as it
+should, without reshuffling which category dominates the result.
 
 ## 2. Embeddedness weight (currently Integrations Used weighted 2x Collaborators)
 

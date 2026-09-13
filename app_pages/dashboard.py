@@ -519,15 +519,30 @@ with tab_robustness:
     )
     results = load_sensitivity_results(risk)
 
-    st.markdown("**At Risk cutoff.** Tier mix of who's flagged, across cutoffs from 15% to 35%:")
-    cutoff_long = results["cutoff"].melt(
-        id_vars=["Cutoff %", "Customers flagged"],
-        value_vars=["% Enterprise", "% Premium", "% Standard", "% Free"],
-        var_name="Plan Type", value_name="Share",
+    st.markdown("**At Risk cutoff.** How the four-way Risk Category split changes across cutoffs from 15% to 35%:")
+    st.caption(
+        "An earlier version of this chart compared the tier mix of who gets flagged and reported it as "
+        "stable. That was an identity, not a finding: Engagement Percentile is ranked separately within "
+        "each Plan Type x Product group, so any cutoff selects that same share of every group by "
+        "construction, and the flagged population's tier mix is guaranteed to match the whole "
+        "population's regardless of cutoff. It has been replaced with what can actually move: category, "
+        "which also depends on tenure and the high-value gate."
     )
-    fig = px.bar(cutoff_long, x="Cutoff %", y="Share", color="Plan Type", barmode="stack")
+    cutoff_long = results["cutoff"].melt(
+        id_vars=["Cutoff %"],
+        value_vars=["Monitor Only", "New & Struggling", "Established & Low Engagement", "High-Value Disengaged"],
+        var_name="Risk Category", value_name="Customers",
+    )
+    fig = px.bar(cutoff_long, x="Cutoff %", y="Customers", color="Risk Category", barmode="stack")
     st.plotly_chart(fig, width="stretch", key="dash_chart_9")
     st.dataframe(results["cutoff"], width="stretch")
+    st.caption(
+        "Every category grows roughly in proportion as the cutoff loosens, and the ratios between "
+        "categories stay close to stable (New & Struggling to Established & Low Engagement runs 0.57 to "
+        "0.59; High-Value Disengaged to the same runs 0.73 to 0.74). That stability is not guaranteed by "
+        "the definition, since it depends on the tenure and embeddedness mix of the customers each wider "
+        "cutoff adds."
+    )
 
     st.markdown("**Embeddedness weight.** Rank correlation and category-flip rate, across Integrations Used weights from 1x to 5x:")
     fig = px.line(
