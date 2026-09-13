@@ -328,34 +328,6 @@ with tab_segments:
         "KMeans on standardised usage metrics, discovered from the data rather than hand-picked."
     )
 
-    with st.expander("How these labels are decided", expanded=False):
-        st.markdown(
-            "- KMeans is fit first, purely on the numbers. It has no idea what \"Power users\" means, "
-            "it just finds groups of customers with similar usage patterns.\n"
-            "- Each cluster's centroid (its average member) is reduced to two scores: **usage volume** "
-            "(Active Days, Sessions, Product Actions, standardised and averaged) and **integration depth** "
-            "(Collaborators, Integrations Used, standardised and averaged).\n"
-            "- The clusters are ranked against each other on both scores, split into a top half and bottom "
-            "half on each axis.\n"
-            "- That gives four combinations: high volume + high depth is named \"Power users\"; high volume "
-            "+ low depth is \"Active, shallow integration\"; low volume + high depth is \"Integration-heavy, "
-            "moderate usage\"; low volume + low depth is \"Low engagement\".\n"
-            "- The labels are computed from where each cluster actually sits every time the pipeline reruns, "
-            "not hardcoded to a cluster number (KMeans' own numbering is arbitrary).\n"
-            "- Usage volume and integration depth correlate at 0.63 in this data, so the four groups sit "
-            "along one diagonal, not in four separated corners. They're useful bands for prioritisation, "
-            "not four naturally distinct customer types. k=2 (below) shows the same split without that "
-            "overstatement.\n"
-            "- **Added after review:** the five usage metrics were originally standardised globally (one "
-            "mean/std for the whole population) before clustering. Products have real, different usage "
-            "baselines (Jira ~10.0 avg active days vs. Loom ~6.7), so a typical Loom customer looked lower "
-            "on every metric purely from which product they use, not because they're less engaged. This "
-            "put Loom at 26.7% of the lowest-usage cluster against its 19.2% base rate. Standardising "
-            "within each Primary Product instead removes that: every product now lands within a point of "
-            "its base rate, at no cost to cluster separation (silhouette 0.304 vs. 0.302), and the "
-            "plan-tier corroboration below is unaffected since Plan Type varies independently of product."
-        )
-
     st.caption("Usage anomalies (Isolation Forest, 5% contamination) vs. the At Risk flag:")
     anomaly_overlap = filtered.groupby("Usage Anomaly")["At Risk"].mean().reset_index()
     anomaly_overlap["Usage Anomaly"] = anomaly_overlap["Usage Anomaly"].map({True: "Anomaly", False: "Not anomaly"})
@@ -367,7 +339,7 @@ with tab_segments:
         "Five raw usage metrics can't be plotted directly, so both use the same two composite axes that "
         "named the clusters. This is the actual logic behind the labels, not an arbitrary PCA projection. "
         "k=2 has the cleanest separation (silhouette 0.40); k=4 trades some separation for more actionable "
-        "nuance (silhouette 0.30) -- see the expander above for why."
+        "nuance (silhouette 0.30) -- see how the labels are decided, below."
     )
     c5, c6 = st.columns(2)
     for col, k in zip([c5, c6], [2, 4]):
@@ -382,6 +354,37 @@ with tab_segments:
                 opacity=0.35, render_mode="webgl",
             )
             st.plotly_chart(fig, width="stretch", key=f"cluster_scatter_k{k}")
+
+    st.markdown("#### How these labels are decided")
+    st.markdown(
+        "- KMeans is fit first, purely on the numbers. It has no idea what \"Power users\" means, it "
+        "just finds groups of customers with similar usage patterns.\n"
+        "- Each cluster's centroid (its average member) is reduced to two scores:\n"
+        "    - **Usage volume**: Active Days, Sessions, Product Actions, standardised and averaged.\n"
+        "    - **Integration depth**: Collaborators, Integrations Used, standardised and averaged.\n"
+        "- Clusters are ranked against each other on both scores, split into a top half and bottom half "
+        "on each axis.\n"
+        "- Labels are computed from where each cluster actually sits every time the pipeline reruns, not "
+        "hardcoded to a cluster number (KMeans' own numbering is arbitrary)."
+    )
+    st.markdown(
+        "**Where each label sits on the chart** (x-axis = Usage Volume, y-axis = Integration Depth):\n"
+        "- **Top-right** (high volume, high depth) → Power users\n"
+        "- **Bottom-right** (high volume, low depth) → Active, shallow integration\n"
+        "- **Top-left** (low volume, high depth) → Integration-heavy, moderate usage\n"
+        "- **Bottom-left** (low volume, low depth) → Low engagement"
+    )
+    st.markdown(
+        "**Added after review, standardising within Primary Product instead of globally:**\n"
+        "- Products have different usage baselines (Jira ~10.0 avg active days/month vs. Loom ~6.7).\n"
+        "- Standardising globally meant a typical Loom customer looked lower on every metric purely from "
+        "which product they use, not from being less engaged.\n"
+        "- Before the fix: Loom was 26.7% of the lowest-usage cluster against its 19.2% base rate.\n"
+        "- After the fix: every product lands within a point of its base rate.\n"
+        "- Cost of the fix: essentially none (silhouette 0.304 → 0.302 at k=4).\n"
+        "- The plan-tier corroboration below is unaffected, since Plan Type varies independently of "
+        "Primary Product."
+    )
 
     st.info(
         "The clusters visibly overlap, and that is real rather than an artifact of squashing five "
