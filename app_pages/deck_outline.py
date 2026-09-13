@@ -37,18 +37,19 @@ SLIDES = [
         "points": [
             "The challenge statement, then the stakes. Do not open with methodology.",
         ],
-        "line": "Atlassian has more than 350,000 customers and cannot call all of them, so the question is which account to work next.",
+        "line": "Atlassian's land-and-expand model depends on adoption, so the question is which account needs intervention before low usage stalls expansion.",
     },
     {
-        "title": "2. Business Stakes",
+        "title": "2. Business Stakes: Adoption Drives Expansion",
         "time": "45 sec", "serves": "Story",
         "points": [
-            "57,334 customers hold over 85% of Cloud ARR (Q4 FY26 shareholder letter, filed 6 August 2026).",
-            "Against >350,000 customers total, that's about one account in six.",
-            "No single customer is >5% of total revenue (FY26 10-K): tens of thousands of accounts, not a handful of whales someone already watches.",
-            "Keep Cloud ARR and total ARR apart. The 85% is Cloud ARR only.",
+            "Filed: MCP adopters grow ARR 2× faster than non-adopters, are significantly stickier, and expand paid seats faster. Rovo adopters grow ARR more than 2× faster.",
+            "Rovo adopters complete 20% more Jira work items and create or edit 25% more Confluence pages: Atlassian measures customer value in the same product activity our model uses.",
+            "The solution must scale efficiently: FY26 revenue grew 26% while cost of revenues grew 11%, employee compensation inside that cost line fell $56.2M, and Atlassian attributed part of its Q4 margin gain to support efficiency.",
+            "These are reported associations, not proof that adoption alone causes the growth difference.",
         ],
-        "line": "The concentration is real, but spread across tens of thousands of accounts, exactly the range where a person can't watch each one and a model can.",
+        "line": "Adoption moves with expansion while support is being scaled more efficiently, so telemetry has to identify which adoption gaps need action.",
+        "source": "Q4 FY26 shareholder letter and FY26 10-K",
     },
     {
         "title": "3. Data Limitations",
@@ -167,7 +168,10 @@ with st.expander("Backup slides, for Q&A only", expanded=False):
         "5. Integration depth: \"those advantages compound the more applications and contexts a "
         "customer connects,\" and 98% of MCP users are also active in the Jira UI the same month "
         "(answers the \"integration traffic might be bots\" objection).\n"
-        "6. The live risk scorer: pick a customer, show the score, the reason, and the recommended "
+        "6. Revenue concentration: 57,334 customers hold over 85% of Cloud ARR, with no single "
+        "customer above 5% of total revenue. Use only if asked about portfolio scale; keep Cloud ARR "
+        "separate from GAAP revenue.\n"
+        "7. The live risk scorer: pick a customer, show the score, the reason, and the recommended "
         "action on one screen."
     )
 

@@ -7,21 +7,6 @@ PLAN_ORDER = ["Free", "Standard", "Premium", "Enterprise"]
 PRODUCT_ORDER = ["Loom", "Confluence", "Trello", "Bitbucket", "Jira"]
 
 
-def build_raw_file_summary(
-    customers: pd.DataFrame,
-    tickets: pd.DataFrame,
-    usage: pd.DataFrame,
-) -> pd.DataFrame:
-    """Return the dimensions of the three source files."""
-    return pd.DataFrame(
-        {
-            "File": ["customers.csv", "customer_support_tickets.csv", "product_usage.csv"],
-            "Rows": [len(customers), len(tickets), len(usage)],
-            "Columns": [len(customers.columns), len(tickets.columns), len(usage.columns)],
-        }
-    )
-
-
 def _ordered_means(
     data: pd.DataFrame,
     group: str,
