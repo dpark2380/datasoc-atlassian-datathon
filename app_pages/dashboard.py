@@ -6,10 +6,10 @@ is the other page in this app, app_pages/risk_scorer.py.
 
 Run: .venv/bin/streamlit run streamlit_app.py
 
-Reads analysis/customer_risk.csv and analysis/cleaned_tickets.csv, both
-produced by analysis/eda.py, plus the docs/ findings for the Documentation
-tab. Run analysis/eda.py and analysis/sensitivity_checks.py first if these
-don't exist yet.
+Reads analysis/customer_risk.csv, produced by analysis/eda.py, plus the three
+raw source files and the docs/ findings for the Documentation tab. Run
+analysis/eda.py and analysis/sensitivity_checks.py first if the generated
+output doesn't exist yet.
 """
 import hashlib
 import sys
@@ -22,13 +22,13 @@ import streamlit as st
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT / "analysis"))
 try:
-    from analysis import reliability_checks, sensitivity_checks  # noqa: E402
+    from analysis import dashboard_metrics, reliability_checks, sensitivity_checks  # noqa: E402
 except ImportError:
-    import reliability_checks  # noqa: E402
-    import sensitivity_checks  # noqa: E402
+    import dashboard_metrics, reliability_checks, sensitivity_checks  # noqa: E402
 
 RISK_CSV = ROOT / "analysis" / "customer_risk.csv"
-TICKETS_CSV = ROOT / "analysis" / "cleaned_tickets.csv"
+CUSTOMERS_CSV = ROOT / "references" / "Dataset" / "customers.csv"
+TICKETS_CSV = ROOT / "references" / "Dataset" / "customer_support_tickets.csv"
 USAGE_CSV = ROOT / "references" / "Dataset" / "product_usage.csv"
 DOCS_DIR = ROOT / "docs"
 
@@ -115,7 +115,8 @@ def load_data():
     risk["Integration Depth"] = z_within_product(["Collaborators", "Integrations Used"])
     tickets = pd.read_csv(TICKETS_CSV)
     usage = pd.read_csv(USAGE_CSV)
-    return risk, tickets, usage
+    customers = pd.read_csv(CUSTOMERS_CSV)
+    return risk, customers, tickets, usage
 
 
 @st.cache_data
@@ -138,7 +139,8 @@ def load_sensitivity_results(_risk: pd.DataFrame, code_version: str):
     }
 
 
-risk, tickets, usage = load_data()
+risk, customers, tickets, usage = load_data()
+eda_metrics = dashboard_metrics.build_eda_metrics(customers, tickets, usage)
 
 st.title("Customer Risk & Playbook")
 st.caption(
@@ -165,16 +167,49 @@ tab_eda, tab_overview, tab_risk, tab_segments, tab_reliability, tab_robustness, 
 
 # --- EDA ---------------------------------------------------------------------
 with tab_eda:
+    st.subheader("Pitch evidence at a glance")
+    st.caption(
+        "The decision-driving EDA in four numbers: the support file cannot support sentiment analysis, "
+        "while the usage panel contains stable, commercially meaningful signal."
+    )
+    with st.container(horizontal=True):
+        st.metric(
+            "Usable customer-written text",
+            "0 fields",
+            border=True,
+            help="The dataset has no ticket description, customer comment, or other customer-authored text. "
+            "Resolution is generated filler rather than customer sentiment.",
+        )
+        st.metric(
+            "Impossible event order",
+            f"{eda_metrics['impossible_order_rate']:.1%}",
+            border=True,
+            help=f"Among {eda_metrics['resolved_ticket_count']:,} resolved tickets, the recorded resolution "
+            "precedes the recorded first response. This cannot happen in a real support workflow.",
+        )
+        st.metric(
+            "Jan–May usage persistence",
+            f"{eda_metrics['active_days_persistence']:.2f}",
+            border=True,
+            help="Correlation between each customer's first- and last-month Active Days. A strong positive "
+            "value shows that usage measures a persistent difference between customers.",
+        )
+        st.metric(
+            "Enterprise vs. Free integrations",
+            f"{eda_metrics['integration_tier_ratio']:.1f}×",
+            border=True,
+            help="Average Integrations Used is more than five times higher for Enterprise than Free accounts, "
+            "the sharpest plan-tier signal in the usage data.",
+        )
+
+    st.divider()
+
     st.subheader("What's in the raw files")
     st.caption(
         "The three files the datathon dataset ships as, before any of our own scoring or clustering. "
         "Every number below is computed live from them."
     )
-    shape_table = pd.DataFrame({
-        "File": ["customer_support_tickets.csv", "product_usage.csv", "Unique customers"],
-        "Rows": [f"{len(tickets):,}", f"{len(usage):,}", f"{risk['Customer ID'].nunique():,}"],
-        "Columns": [str(len(tickets.columns)), str(len(usage.columns)), "-"],
-    })
+    shape_table = dashboard_metrics.build_raw_file_summary(customers, tickets, usage)
     st.dataframe(shape_table, width="stretch", hide_index=True)
 
     missing = tickets.isna().sum()
@@ -204,7 +239,36 @@ with tab_eda:
     fig = px.scatter(persistence, x="First month", y="Last month", opacity=0.25, render_mode="webgl")
     fig.update_traces(marker=dict(size=5))
     st.plotly_chart(fig, width="stretch", key="eda_persistence")
-    st.metric(f"Correlation, {first_month} vs. {last_month} Active Days", f"{corr:.2f}")
+    st.caption(f"First-to-last-month correlation: **{corr:.2f}** across {len(persistence):,} customers.")
+
+    st.subheader("Usage scales with plan tier and product")
+    st.caption(
+        "The stable usage signal also moves in expected commercial patterns. Higher plan tiers use the "
+        "products more deeply, while each product retains its own natural activity baseline."
+    )
+    plan_chart, product_chart = st.columns(2)
+    with plan_chart:
+        fig = px.bar(
+            eda_metrics["usage_by_plan"],
+            x="Plan Type",
+            y="Active Days",
+            title="Average active days by plan",
+        )
+        st.plotly_chart(fig, width="stretch", key="eda_usage_by_plan")
+    with product_chart:
+        fig = px.bar(
+            eda_metrics["usage_by_product"],
+            x="Product",
+            y="Active Days",
+            title="Average active days by product",
+        )
+        st.plotly_chart(fig, width="stretch", key="eda_usage_by_product")
+    st.caption(
+        f"The panel covers **{eda_metrics['month_count']} complete months**. Active Days rises from "
+        f"**{eda_metrics['usage_by_plan'].iloc[0]['Active Days']:.1f} on Free** to "
+        f"**{eda_metrics['usage_by_plan'].iloc[-1]['Active Days']:.1f} on Enterprise**; Integrations Used "
+        f"rises **{eda_metrics['integration_tier_ratio']:.1f}×** across the same tiers."
+    )
 
     st.divider()
 
@@ -237,15 +301,11 @@ with tab_eda:
             })
     st.dataframe(pd.DataFrame(spread_rows), width="stretch", hide_index=True)
 
-    both_times = tickets.dropna(subset=["First Response Time", "Time to Resolution"]).copy()
-    both_times["First Response Time"] = pd.to_datetime(both_times["First Response Time"])
-    both_times["Time to Resolution"] = pd.to_datetime(both_times["Time to Resolution"])
-    paradox_rate = (both_times["Time to Resolution"] < both_times["First Response Time"]).mean()
-    st.metric(
-        "Tickets where the recorded resolution time is before the recorded first-response time",
-        f"{paradox_rate:.1%}",
-        help="Not possible in a real support workflow. These two timestamps were generated independently "
-        "of each other, not produced by an actual sequence of events.",
+    st.warning(
+        f"{eda_metrics['impossible_order_rate']:.1%} of resolved tickets record resolution before the first "
+        "response. Combined with the absent customer text and flat satisfaction results above, the support "
+        "file is descriptive volume data—not a defensible sentiment or risk signal.",
+        icon=":material/warning:",
     )
 
     st.caption(
