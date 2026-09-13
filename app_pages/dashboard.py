@@ -342,32 +342,34 @@ with tab_segments:
         "k=2 has the cleanest separation (silhouette 0.40); k=4 trades some separation for more actionable "
         "nuance (silhouette 0.30) -- see how the labels are decided, below."
     )
-    c5, c6 = st.columns(2)
-    for col, k in zip([c5, c6], [2, 4]):
-        with col:
-            cluster_col = f"Usage Cluster (k={k})"
-            st.markdown(f"**k={k}**")
-            counts = filtered[cluster_col].value_counts().reset_index()
-            fig = px.bar(counts, x=cluster_col, y="count")
-            st.plotly_chart(fig, width="stretch", key=f"cluster_counts_k{k}")
-            fig = px.scatter(
-                filtered, x="Usage Volume", y="Integration Depth", color=cluster_col,
-                opacity=0.35, render_mode="webgl",
-            )
-            # Centroids computed on the full, unfiltered population -- these
-            # are the actual KMeans cluster centres the labels correspond to.
-            # Recomputing them on a sidebar-filtered subset would drift from
-            # the real cluster definition (e.g. filtering to Free removes
-            # most Power users, so their mean position would no longer
-            # represent that cluster).
-            centroids = risk.groupby(cluster_col, observed=True)[["Usage Volume", "Integration Depth"]].mean()
-            fig.add_trace(go.Scatter(
-                x=centroids["Usage Volume"], y=centroids["Integration Depth"],
-                mode="markers+text", text=centroids.index, textposition="top center",
-                marker=dict(symbol="x", size=14, color="black", line=dict(width=2)),
-                name="Centroid", showlegend=False,
-            ))
-            st.plotly_chart(fig, width="stretch", key=f"cluster_scatter_k{k}")
+    for k in [2, 4]:
+        cluster_col = f"Usage Cluster (k={k})"
+        st.markdown(f"**k={k}**")
+        counts = filtered[cluster_col].value_counts().reset_index()
+        fig = px.bar(counts, x=cluster_col, y="count")
+        fig.update_layout(height=350)
+        st.plotly_chart(fig, width="stretch", key=f"cluster_counts_k{k}")
+
+        fig = px.scatter(
+            filtered, x="Usage Volume", y="Integration Depth", color=cluster_col,
+            opacity=0.35, render_mode="webgl",
+        )
+        # Centroids computed on the full, unfiltered population -- these
+        # are the actual KMeans cluster centres the labels correspond to.
+        # Recomputing them on a sidebar-filtered subset would drift from
+        # the real cluster definition (e.g. filtering to Free removes
+        # most Power users, so their mean position would no longer
+        # represent that cluster).
+        centroids = risk.groupby(cluster_col, observed=True)[["Usage Volume", "Integration Depth"]].mean()
+        fig.add_trace(go.Scatter(
+            x=centroids["Usage Volume"], y=centroids["Integration Depth"],
+            mode="markers+text", text=centroids.index, textposition="top center",
+            textfont=dict(color="red", size=14, weight="bold"),
+            marker=dict(symbol="x", size=22, color="red", line=dict(width=4, color="red")),
+            name="Centroid", showlegend=False,
+        ))
+        fig.update_layout(height=650)
+        st.plotly_chart(fig, width="stretch", key=f"cluster_scatter_k{k}")
 
     st.markdown("#### How these labels are decided")
     st.markdown(
@@ -411,10 +413,12 @@ with tab_segments:
         icon=":material/query_stats:",
     )
 
-    st.subheader("\"Aren't these just your plan tiers?\"")
+    st.subheader("Cluster composition by plan and product")
     st.caption(
-        "The most likely objection to this chart, and the answer is mostly yes. Worth showing before "
-        "someone finds it. Computed live from the full dataset."
+        "What this chart shows: for each of the 4 usage clusters, what share of its customers fall into "
+        "each Plan Type or Primary Product. It answers the most likely objection to this whole clustering "
+        "exercise: \"aren't these just your plan tiers?\" The answer is mostly yes on plan, and almost not "
+        "at all on product, both shown below with the actual numbers. Computed live from the full dataset."
     )
     plan_mix = pd.crosstab(risk["Usage Cluster (k=4)"], risk["Plan Type"], normalize="index") * 100
     product_mix = pd.crosstab(risk["Usage Cluster (k=4)"], risk["Primary Product"], normalize="index") * 100
@@ -583,15 +587,18 @@ with tab_reliability:
 
 # --- Robustness checks -------------------------------------------------------
 with tab_robustness:
-    st.subheader("Does the exact parameter choice matter?")
+    st.subheader("Parameter sensitivity")
     st.caption(
         "The Risk Score's parameters (25% cutoff, 2x Integrations weight, 0.3 urgency coefficient) were chosen "
-        "by judgment, since there's no churn label to fit them against. These checks show whether a reasonable "
-        "alternative choice would flag a very different set of customers, or just fine-tune the result."
+        "by judgment, since there's no churn label to fit them against. The question this whole tab answers: "
+        "does the exact parameter choice matter, or would a reasonable alternative flag a very different set "
+        "of customers rather than just fine-tune the result? Four checks below, one per parameter, plus a "
+        "resampling check on the flag itself."
     )
     results = load_sensitivity_results(risk, _module_version(sensitivity_checks))
 
-    st.markdown("**At Risk cutoff.** How the four-way Risk Category split changes across cutoffs from 15% to 35%:")
+    st.markdown("#### At Risk cutoff")
+    st.caption("How the four-way Risk Category split changes across cutoffs from 15% to 35%:")
     st.caption(
         "An earlier version of this chart compared the tier mix of who gets flagged and reported it as "
         "stable. That was an identity, not a finding: Engagement Percentile is ranked separately within "
@@ -616,7 +623,8 @@ with tab_robustness:
         "cutoff adds."
     )
 
-    st.markdown("**Embeddedness weight.** Rank correlation and category-flip rate, across Integrations Used weights from 1x to 5x:")
+    st.markdown("#### Embeddedness weight")
+    st.caption("Rank correlation and category-flip rate, across Integrations Used weights from 1x to 5x:")
     fig = px.line(
         results["embeddedness"], x="Integrations weight", y="Rank correlation vs. baseline (2x)", markers=True,
     )
@@ -624,7 +632,8 @@ with tab_robustness:
     st.plotly_chart(fig, width="stretch", key="dash_chart_10")
     st.dataframe(results["embeddedness"], width="stretch")
 
-    st.markdown("**Urgency coefficient.** Risk Score rank correlation across coefficients from 0.2 to 0.5 (Risk Category doesn't depend on this at all):")
+    st.markdown("#### Urgency coefficient")
+    st.caption("Risk Score rank correlation across coefficients from 0.2 to 0.5. Risk Category doesn't depend on this at all:")
     fig = px.line(
         results["urgency"], x="Urgency coefficient", y="Rank correlation vs. baseline (0.3)", markers=True,
     )
@@ -632,7 +641,8 @@ with tab_robustness:
     st.plotly_chart(fig, width="stretch", key="dash_chart_11")
     st.dataframe(results["urgency"], width="stretch")
 
-    st.markdown("**Bootstrap stability.** Per-customer agreement rate with the full-population At Risk flag, across 20 resamples:")
+    st.markdown("#### Bootstrap stability")
+    st.caption("Per-customer agreement rate with the full-population At Risk flag, across 20 resamples:")
     col_a, col_b = st.columns([1, 2])
     with col_a:
         st.metric("Average agreement", f"{results['bootstrap_mean']:.1%}")
