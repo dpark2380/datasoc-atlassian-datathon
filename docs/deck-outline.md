@@ -5,9 +5,11 @@ last year: title, problem, business stakes, one decisive finding, evidence,
 method, results, scenarios, recommendations, and a final product reveal. The
 content is changed completely for this problem and solution.
 
-The timings total 7 minutes 55 seconds, leaving 5 seconds of buffer in an
-8-minute presentation, tight enough that it is worth re-timing after adding
-slide 10. Solution and Recommendation carries 35% of the marks,
+The timings total 8 minutes 35 seconds, 35 seconds OVER an 8-minute
+presentation after adding slides 16 and 17. This needs to be cut down before
+presenting: either trim two of the shorter slides' speaking time, fold slide
+17 into slide 16 as one slide, or drop something else from the narrative.
+Solution and Recommendation carries 35% of the marks,
 Analysis and Insights 30%, Presentation and Q&A 20%, and Story and Problem
 Statement 15%.
 
@@ -405,7 +407,64 @@ Put on the slide:
 Line to say: Protect current value first, then test expansion where a specific
 adoption gap is visible.
 
-## Slide 16. Introducing the Customer Risk Playbook
+## Slide 16. How the Solution Fits Together
+
+Time: 20 seconds. Purpose: Solution and Recommendation.
+
+Headline: One pipeline, corroborated and forecast, converging on three
+outputs.
+
+Figure to add: a left-to-right pipeline: **Usage data -> Reliability-weighted
+composites -> Peer-relative rule -> Risk Score & Category**. Beneath it, a
+labelled branch, **corroborated by, and given an early warning from**,
+showing **KMeans clustering**, **Isolation Forest**, and the **Month-5
+forecaster** feeding upward rather than deciding anything. Both converge on
+two final boxes: **Product-specific recommended action** and **Live Risk
+Scorer tool**.
+
+Put on the slide:
+
+- One backbone does the deciding: data, composites, rule, score. Nothing
+  downstream overrides it.
+- The three diagnostic and forecasting components corroborate or warn; they
+  are not competing production models and do not decide who gets flagged.
+- Everything converges on two outputs a person can act on: a recommended
+  action, and a live tool.
+
+Line to say: One backbone, corroborated and forecast, converging on what a
+person actually uses.
+
+## Slide 17. Three Outputs, One Pipeline
+
+Time: 20 seconds. Purpose: Solution and Recommendation.
+
+Headline: Everything the analysis produces, reduced to three things a person
+can use.
+
+Figure to add: three equal columns, one per output.
+
+- **Risk Score & Risk Category:** built from the peer-relative rule on
+  reliability-weighted composites; explainable to a human without
+  translation.
+- **Recommended Action:** built from product-specific actions applied to the
+  Risk Category; a named CS playbook, not a generic email.
+- **Live Risk Scorer:** built from all six components surfaced together; the
+  analysis only matters if someone can act on it in real time.
+
+Put on the slide:
+
+- Risk Score & Risk Category: every customer scored 0-100 and placed in one
+  of four categories, compared only to peers on the same Plan Type and
+  Primary Product.
+- Recommended Action: category sets the intensity, Primary Product sets the
+  workflow.
+- Live Risk Scorer: score, peer comparison, category, recommended action,
+  and forecast probability, all on one screen.
+
+Line to say: Three outputs, one pipeline: a score, a specific action, and a
+tool to act on both.
+
+## Slide 18. Introducing the Customer Risk Playbook
 
 Time: 20 seconds. Purpose: product reveal and close.
 

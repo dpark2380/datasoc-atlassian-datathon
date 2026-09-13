@@ -6,7 +6,7 @@ import streamlit as st
 
 st.title("Deck outline")
 st.caption(
-    "A 16-slide, 7:55 story arc modelled on last year's sample deck: title → problem → stakes → "
+    "An 18-slide, 8:35 story arc modelled on last year's sample deck: title → problem → stakes → "
     "headline finding → evidence → method → results → action → product reveal. Each slide has one "
     "job and one specified figure."
 )
@@ -317,7 +317,49 @@ SLIDES = [
         "line": "The framework protects current value first, then tests expansion where a specific adoption gap is visible.",
     },
     {
-        "title": "16. Introducing the Customer Risk Playbook",
+        "title": "16. How the Solution Fits Together",
+        "time": "20 sec",
+        "serves": "Solution & Recommendation",
+        "headline": "One pipeline, corroborated and forecast, converging on three outputs.",
+        "figure": (
+            "A left-to-right pipeline: **Usage data -> Reliability-weighted composites -> Peer-relative "
+            "rule -> Risk Score & Category**. Beneath it, a labelled branch, **corroborated by, and given "
+            "an early warning from**, showing **KMeans clustering**, **Isolation Forest**, and the "
+            "**Month-5 forecaster** feeding upward rather than deciding anything. Both converge on two "
+            "final boxes: **Product-specific recommended action** and **Live Risk Scorer tool**."
+        ),
+        "points": [
+            "One backbone does the deciding: data, composites, rule, score. Nothing downstream overrides it.",
+            "The three diagnostic/forecasting components corroborate or warn; they are not competing "
+            "production models and do not decide who gets flagged.",
+            "Everything converges on two outputs a person can act on: a recommended action, and a live tool.",
+        ],
+        "line": "One backbone, corroborated and forecast, converging on what a person actually uses.",
+    },
+    {
+        "title": "17. Three Outputs, One Pipeline",
+        "time": "20 sec",
+        "serves": "Solution & Recommendation",
+        "headline": "Everything the analysis produces, reduced to three things a person can use.",
+        "figure": (
+            "Three equal columns, one per output. **Risk Score & Risk Category**: built from the "
+            "peer-relative rule on reliability-weighted composites; explainable to a human without "
+            "translation. **Recommended Action**: built from product-specific actions applied to the "
+            "Risk Category; a named CS playbook, not a generic email. **Live Risk Scorer**: built from all "
+            "six components surfaced together; the analysis only matters if someone can act on it in "
+            "real time."
+        ),
+        "points": [
+            "Risk Score & Risk Category: every customer scored 0-100 and placed in one of four categories, "
+            "compared only to peers on the same Plan Type and Primary Product.",
+            "Recommended Action: category sets the intensity, Primary Product sets the workflow.",
+            "Live Risk Scorer: score, peer comparison, category, recommended action, and forecast "
+            "probability, all on one screen.",
+        ],
+        "line": "Three outputs, one pipeline: a score, a specific action, and a tool to act on both.",
+    },
+    {
+        "title": "18. Introducing the Customer Risk Playbook",
         "time": "20 sec",
         "serves": "Product reveal and close",
         "headline": "One account, one explanation, one next action.",
