@@ -32,7 +32,7 @@ st.info(
 
 SLIDES = [
     {
-        "title": "1. The problem",
+        "title": "1. Problem Statement",
         "time": "30 sec", "serves": "Story",
         "points": [
             "The challenge statement, then the stakes. Do not open with methodology.",
@@ -40,7 +40,7 @@ SLIDES = [
         "line": "Atlassian has more than 350,000 customers and cannot call all of them, so the question is which account to work next.",
     },
     {
-        "title": "2. Why getting this right is worth money",
+        "title": "2. Business Stakes",
         "time": "45 sec", "serves": "Story",
         "points": [
             "57,334 customers hold over 85% of Cloud ARR (Q4 FY26 shareholder letter, filed 6 August 2026).",
@@ -51,7 +51,7 @@ SLIDES = [
         "line": "The concentration is real, but spread across tens of thousands of accounts, exactly the range where a person can't watch each one and a model can.",
     },
     {
-        "title": "3. The data cannot answer the question as asked",
+        "title": "3. Data Limitations",
         "time": "60 sec", "serves": "Analysis (credibility foundation, don't soften it)",
         "points": [
             "Every ticket field tested against every other, all flat: satisfaction, type, priority, channel, subject, resolution time, age, gender, ticket count.",
@@ -62,7 +62,7 @@ SLIDES = [
         "source": "findings-data-quality.md, findings-additional-signals.md",
     },
     {
-        "title": "4. We ran the same audit on our own data",
+        "title": "4. Model Integrity Check",
         "time": "45 sec", "serves": "Analysis (most teams won't have this)",
         "points": [
             "Reliability per metric: 0.98 (Sessions) down to 0.63 (Collaborators). Every composite weight is measured, not chosen by hand.",
@@ -72,7 +72,7 @@ SLIDES = [
         "source": "findings-reliability.md",
     },
     {
-        "title": "5. What is real",
+        "title": "5. The Real Signal",
         "time": "45 sec", "serves": "Analysis",
         "points": [
             "Usage is stable per customer (0.82 correlation Jan-May).",
@@ -81,7 +81,7 @@ SLIDES = [
         ],
     },
     {
-        "title": "6. The risk model",
+        "title": "6. Risk Model",
         "time": "60 sec", "serves": "Analysis into Solution",
         "points": [
             "At risk = bottom quartile of engagement within the same plan tier and product (a Free/Loom user isn't judged against an Enterprise/Jira baseline).",
@@ -93,7 +93,7 @@ SLIDES = [
         }),
     },
     {
-        "title": "7. Why you can trust the split",
+        "title": "7. Cross-Validation",
         "time": "45 sec", "serves": "Analysis (condense hard, one line each)",
         "points": [
             "Unsupervised clustering, with no knowledge of the risk rules, independently reproduced the same volume-vs-depth split. High-Value Disengaged draws 62% from the integration-heavy cluster.",
@@ -103,7 +103,7 @@ SLIDES = [
         "source": "findings-ml-segments.md, findings-sensitivity.md",
     },
     {
-        "title": "8. What Atlassian does about it",
+        "title": "8. The Solution",
         "time": "90 sec, the most important slide", "serves": "Solution, 35% of the marks",
         "points": [
             "New & Struggling: milestone-tracked onboarding review (30/60/90-day checklist), using Atlassian's own Jira Adoption Guide as session material.",
@@ -114,7 +114,7 @@ SLIDES = [
         "source": "research-cs-playbook-actions.md",
     },
     {
-        "title": "9. Atlassian's own Customer Success team already works this way",
+        "title": "9. Industry Alignment",
         "time": "45 sec", "serves": "Solution (the strongest single slide, don't bury it in an appendix)",
         "points": [
             "An Atlassian Enterprise CSM published her team's prioritisation weighting: Monthly Active Usage 40%, Potential CSM Impact 20%, Months Until Renewal 20%, Customer Readiness 20%.",
@@ -125,7 +125,7 @@ SLIDES = [
         "warn": "Call it an Atlassian CSM's published method, not Atlassian's official health score. The second version is overclaiming and would be corrected.",
     },
     {
-        "title": "10. What to capture next, and close",
+        "title": "10. Recommendations & Summary",
         "time": "30 sec", "serves": "Solution",
         "points": [
             "Industry health scores (Gainsight, ChurnZero) combine usage with support sentiment and survey data. Ours has usage only, because this dataset's ticket data can't support the rest.",

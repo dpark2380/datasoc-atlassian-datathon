@@ -19,14 +19,14 @@ The support ticket data cannot answer the question asked, we can prove it,
 and the usage data can answer it instead. Here is who is at risk, why, and
 what Atlassian should do about each one.
 
-## Slide 1. The problem (30 seconds)
+## Slide 1. Problem Statement (30 seconds)
 
 The challenge statement, then the stakes. Do not open with methodology.
 
 Line to say: Atlassian has more than 350,000 customers and cannot call all of
 them, so the question is which account to work next.
 
-## Slide 2. Why getting this right is worth money (45 seconds)
+## Slide 2. Business Stakes (45 seconds)
 
 Serves: Story.
 
@@ -43,7 +43,7 @@ each one and a model can.
 
 Keep Cloud ARR and total ARR apart. The 85% is Cloud ARR.
 
-## Slide 3. The data cannot answer the question as asked (60 seconds)
+## Slide 3. Data Limitations (60 seconds)
 
 Serves: Analysis. This is the credibility foundation, so do not soften it.
 
@@ -58,7 +58,7 @@ noise with a trend line on it.
 
 Sources: `findings-data-quality.md`, `findings-additional-signals.md`.
 
-## Slide 4. We ran the same audit on our own data (45 seconds)
+## Slide 4. Model Integrity Check (45 seconds)
 
 Serves: Analysis. This is the slide most teams will not have.
 
@@ -76,7 +76,7 @@ declining.
 
 Source: `findings-reliability.md`.
 
-## Slide 5. What is real (45 seconds)
+## Slide 5. The Real Signal (45 seconds)
 
 Serves: Analysis.
 
@@ -84,7 +84,7 @@ Usage is stable per customer (0.82 correlation January to May) and scales
 cleanly with plan tier (Free 5.3 active days a month, Enterprise 11.5) and by
 product (Loom about 6.7, Jira about 10.0). Two charts, no more.
 
-## Slide 6. The risk model (60 seconds)
+## Slide 6. Risk Model (60 seconds)
 
 Serves: Analysis into Solution.
 
@@ -100,7 +100,7 @@ value and embeddedness, and one of four categories:
 | Established & Low Engagement | 893 |
 | High-Value Disengaged | 661 |
 
-## Slide 7. Why you can trust the split (45 seconds)
+## Slide 7. Cross-Validation (45 seconds)
 
 Serves: Analysis. Condense hard, one line each.
 
@@ -114,7 +114,7 @@ Serves: Analysis. Condense hard, one line each.
 
 Source: `findings-ml-segments.md`, `findings-sensitivity.md`.
 
-## Slide 8. What Atlassian does about it (90 seconds, the most important slide)
+## Slide 8. The Solution (90 seconds, the most important slide)
 
 Serves: Solution, 35% of the marks. Give it the most time.
 
@@ -135,7 +135,7 @@ One specific action per category, each sourced, none of them "send an email":
 
 Source: `research-cs-playbook-actions.md`.
 
-## Slide 9. Atlassian's own Customer Success team already works this way (45 seconds)
+## Slide 9. Industry Alignment (45 seconds)
 
 Serves: Solution. This is the strongest single slide in the deck, so do not
 bury it in an appendix.
@@ -153,7 +153,7 @@ team we built it for.
 Call it an Atlassian CSM's published method, not Atlassian's official health
 score. The second version is overclaiming and would be corrected.
 
-## Slide 10. What to capture next, and close (30 seconds)
+## Slide 10. Recommendations & Summary (30 seconds)
 
 Serves: Solution.
 
