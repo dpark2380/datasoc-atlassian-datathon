@@ -15,6 +15,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+from app_pages.chart_styling import render_plotly_chart
+
 RISK_CSV = Path(__file__).parent.parent / "analysis" / "customer_risk.csv"
 PRED_CSV = Path(__file__).parent.parent / "analysis" / "customer_disengagement_predictions.csv"
 
@@ -113,7 +115,7 @@ fig.add_trace(go.Bar(
     x=PEER_METRICS, y=peer_median.tolist(), marker_color="#B3D4FF",
 ))
 fig.update_layout(barmode="group", legend=dict(orientation="h", y=1.15), template="plotly_white")
-st.plotly_chart(fig, width="stretch", key="scorer_peer_chart")
+render_plotly_chart(fig, width="stretch", key="scorer_peer_chart")
 
 anomaly_desc = ""
 if row["Usage Anomaly"]:

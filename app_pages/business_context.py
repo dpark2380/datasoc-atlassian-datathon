@@ -18,6 +18,8 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+from app_pages.chart_styling import render_plotly_chart
+
 ATLASSIAN_COLORS = ["#0052CC", "#4C9AFF", "#00B8D9", "#6554C0", "#FF991F", "#DE350B"]
 px.defaults.template = "plotly_white"
 px.defaults.color_discrete_sequence = ATLASSIAN_COLORS
@@ -59,7 +61,7 @@ cohort = pd.DataFrame({
     "Customers with >$10,000 Cloud ARR": [45842, 51978, 57334],
 })
 fig = px.bar(cohort, x="As at 30 June", y="Customers with >$10,000 Cloud ARR")
-st.plotly_chart(fig, width="stretch", key="biz_chart_1")
+render_plotly_chart(fig, width="stretch", key="biz_chart_1")
 st.caption(
     "FY26 Form 10-K, filed 14 August 2026, customer metrics table. The same filing says Atlassian is "
     "\"focused on continuing to grow ... the number of customers with more than $10,000 in annualized "
@@ -85,7 +87,7 @@ weights = pd.DataFrame({
 })
 fig = px.bar(weights, x="Weight", y="Field", orientation="h")
 fig.update_layout(yaxis=dict(autorange="reversed"))
-st.plotly_chart(fig, width="stretch", key="biz_chart_2")
+render_plotly_chart(fig, width="stretch", key="biz_chart_2")
 
 st.markdown(
     "On how the usage term is signed:\n\n"
