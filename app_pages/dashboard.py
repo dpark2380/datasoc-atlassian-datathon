@@ -483,21 +483,39 @@ with tab_risk:
     st.markdown("#### Product-specific recommended actions")
     st.caption(
         "Risk category sets the intervention intensity; Primary Product sets the workflow. These are "
-        "recommended workflow checks—not detected feature gaps, because the supplied data has no "
+        "recommended workflow checks, not detected feature gaps, because the supplied data has no "
         "feature-level events."
     )
-    product_actions = pd.DataFrame(
-        [
-            {
-                "Risk Category": category,
-                "Primary Product": product,
-                "Recommended Action": eda.recommended_action(category, product),
+    focus_key_by_category = {
+        "Monitor Only": "monitor",
+        "New & Struggling": "onboarding",
+        "Established & Low Engagement": "reactivation",
+        "High-Value Disengaged": "value_review",
+    }
+    action_pivot = pd.DataFrame(
+        {
+            product: {
+                category: eda.PRODUCT_ACTION_FOCUS[product][focus_key].capitalize()
+                for category, focus_key in focus_key_by_category.items()
             }
-            for category in CATEGORY_ORDER
             for product in eda.PRODUCT_ACTION_FOCUS
-        ]
-    )
-    st.dataframe(product_actions, width="stretch", hide_index=True)
+        }
+    ).reindex(CATEGORY_ORDER).rename_axis("Risk Category")
+    st.dataframe(action_pivot, width="stretch")
+
+    with st.expander("Full recommended-action text for every category x product combination", expanded=False):
+        product_actions = pd.DataFrame(
+            [
+                {
+                    "Risk Category": category,
+                    "Primary Product": product,
+                    "Recommended Action": eda.recommended_action(category, product),
+                }
+                for category in CATEGORY_ORDER
+                for product in eda.PRODUCT_ACTION_FOCUS
+            ]
+        )
+        st.dataframe(product_actions, width="stretch", hide_index=True)
 
     st.subheader("Usage by product")
     st.caption("Secondary real cut: Jira and other daily-use tools show higher engagement than Loom.")
