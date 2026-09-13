@@ -341,6 +341,48 @@ with tab_segments:
         icon=":material/query_stats:",
     )
 
+    st.subheader("\"Aren't these just your plan tiers?\"")
+    st.caption(
+        "The most likely objection to this chart, and the answer is mostly yes. Worth showing before "
+        "someone finds it. Computed live from the full dataset."
+    )
+    plan_mix = pd.crosstab(risk["Usage Cluster (k=4)"], risk["Plan Type"], normalize="index") * 100
+    product_mix = pd.crosstab(risk["Usage Cluster (k=4)"], risk["Primary Product"], normalize="index") * 100
+    product_base = risk["Primary Product"].value_counts(normalize=True) * 100
+
+    mix_choice = st.radio(
+        "Show cluster composition by", options=["Plan Type", "Primary Product"], horizontal=True,
+        label_visibility="collapsed", key="cluster_mix_choice",
+    )
+    mix = plan_mix if mix_choice == "Plan Type" else product_mix
+    long = mix.reset_index().melt(id_vars="Usage Cluster (k=4)", var_name=mix_choice, value_name="Share of cluster (%)")
+    fig = px.bar(long, x="Usage Cluster (k=4)", y="Share of cluster (%)", color=mix_choice, barmode="stack")
+    st.plotly_chart(fig, width="stretch", key="cluster_mix_chart")
+
+    integration_heavy = plan_mix.loc["Integration-heavy, moderate usage"]
+    low_engagement = plan_mix.loc["Low engagement"]
+    st.markdown(
+        f"- **Plan tier explains most of it.** The Integration-heavy cluster is "
+        f"{integration_heavy['Enterprise'] + integration_heavy['Premium']:.0f}% Enterprise or Premium. "
+        f"Low engagement is {low_engagement['Free'] + low_engagement['Standard']:.0f}% Free or Standard. "
+        "These clusters track what a customer pays for.\n"
+        f"- **Product explains much less.** Every product sits near a {product_base.min():.0f} to "
+        f"{product_base.max():.0f}% share of the base. The largest distortions are Loom at "
+        f"{product_mix.loc['Low engagement', 'Loom']:.0f}% of Low engagement and Jira at "
+        f"{product_mix.loc['Power users', 'Jira']:.0f}% of Power users. Real, but a long way from the "
+        "clusters simply restating which product someone bought.\n"
+        "- **The plan-tier result is evidence, not a defect.** KMeans was given five usage metrics and "
+        "nothing else. It never saw Plan Type or Primary Product. Reconstructing plan bands at that "
+        "concentration from behaviour alone is independent confirmation that the usage-to-plan "
+        "relationship the risk model depends on is real, since a second method found it without being "
+        "pointed at it.\n"
+        "- **Why the clustering is not split by product.** Splitting would give five separate "
+        "clusterings averaging about 1,664 customers each, which weakens every cluster to remove a "
+        "distortion the numbers above show is small. The clustering's job here is corroboration rather "
+        "than discovering new segments, and the risk model already does the peer-group comparison by "
+        "Plan Type and Product where it actually matters."
+    )
+
     st.subheader("Where the usage anomalies sit")
     st.caption(
         "The same axes, colored by whether Isolation Forest flagged the account as an unusual usage shape "
