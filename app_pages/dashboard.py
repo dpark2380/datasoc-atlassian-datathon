@@ -171,6 +171,28 @@ with tab_overview:
         fig = px.bar(tickets["Ticket Channel"].value_counts().reset_index(), x="Ticket Channel", y="count")
         st.plotly_chart(fig, width="stretch", key="dash_chart_2")
 
+    with st.expander("Answering \"you just ignored our data\"", expanded=False):
+        st.caption("The strongest single number in the audit, and a direct answer to that question.")
+        m1, m2 = st.columns(2)
+        m1.metric("Customers with zero tickets", "0 of 8,320")
+        m2.metric("Expected under random assignment", "~3,006", "Poisson, λ=1.018")
+        st.markdown(
+            "- Getting exactly zero is not a coincidence. `customers.csv` is the deduplicated identity "
+            "list built FROM the ticket file's email column, not a separate table tickets were randomly "
+            "matched to.\n"
+            "- The same logic applies to product usage: the exact set of products a customer's tickets "
+            "mention matches their `product_usage.csv` rows 100% of the time, for every customer, "
+            "including the 114 with 2 products and 4 with 3. That precision only happens if the usage "
+            "file was generated per customer per ticket-mentioned product.\n"
+            "- **This corrects an earlier version of our own findings**, which called that 100% match "
+            "\"a real, if narrow, fact\" about the ticket data. It is not independent evidence of "
+            "anything: it is a fact about how the files share a common origin, not about whether any "
+            "ticket field is trustworthy.\n"
+            "- We did not ignore the data we were given. We reverse engineered how it was built, and "
+            "that is what let us tell the difference between what's real (usage) and what's a "
+            "generated label (everything else in the ticket file)."
+        )
+
 # --- Risk model --------------------------------------------------------------
 with tab_risk:
     st.subheader("Usage scales with plan tier (the real signal)")

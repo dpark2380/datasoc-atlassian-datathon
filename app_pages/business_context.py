@@ -229,6 +229,47 @@ st.markdown(
 
 st.divider()
 
+# --- 7. What Atlassian's own product already captures ---------------------
+st.header("7. What Atlassian's own product already captures")
+st.caption(
+    "This grounds the closing recommendation in Atlassian's own published API and schema, not a "
+    "generic wishlist. Sources: the JSM Cloud REST API reference and the published Atlassian "
+    "Analytics warehouse schema for Jira Service Management."
+)
+
+st.metric("Support-relevant columns in this dataset that map to a JSM concept", "11 of 13", "all flattened")
+
+jsm_gap = pd.DataFrame({
+    "Dataset column": [
+        "Customer Satisfaction Rating", "First Response Time / Time to Resolution",
+        "Ticket Status", "Customer Email", "Ticket Channel", "Ticket Type",
+    ],
+    "What JSM actually models": [
+        "CSATFeedbackFullDTO: rating (1-5) plus a comment field",
+        "SlaInformationOngoingCycleDTO: goal, elapsed time, breach flag, pause flag, working-hours flag",
+        "Full changelog: every transition, its author, and its timestamp",
+        "jsm_issue_organization_mapping: request mapped to an organization",
+        "Fixed vocabulary: jira, portal, anonymousportal, email, API, deployment (no Phone or Social media)",
+        "RequestTypeDTO: id, name, practice, and a configured field schema",
+    ],
+})
+st.dataframe(jsm_gap, width="stretch", hide_index=True)
+
+st.markdown(
+    "- **The gap that matters most:** the rating half of CSAT is exactly what this dataset gives us. "
+    "The `comment` field is exactly the sentiment data the challenge asks for and this dataset lacks.\n"
+    "- **Also absent from the file entirely:** comment threads (with a public/internal flag), SLA "
+    "breach state, organization mapping, work logs, approvals, issue links, incident severity.\n"
+    "- **One thing this rules out:** `Ticket Channel` and `Ticket Type` use vocabularies JSM doesn't, "
+    "so this file was not exported from a real JSM instance. It's a simulation shaped like one."
+)
+st.caption(
+    "Say \"your public API models this,\" not \"your systems contain this\": the API reference shows "
+    "what JSM exposes, not how Atlassian provisions data internally."
+)
+
+st.divider()
+
 st.warning(
     "Statistics we checked and deliberately left out. The Reichheld retention figures (\"a 5% increase "
     "in retention raises profits 25% to 95%\") do not appear in that form in the original 1990 article, "

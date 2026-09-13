@@ -3,12 +3,14 @@ Entry point for deployment (Streamlit Community Cloud points here).
 
 Run: .venv/bin/streamlit run streamlit_app.py
 
-Combines three pages into one app:
+Combines four pages into one app:
 - Dashboard (app_pages/dashboard.py): full analysis, exploration, and documentation.
 - Risk Scorer (app_pages/risk_scorer.py): single-customer lookup, live-demo tool.
 - Business Context (app_pages/business_context.py): the case for this work, from
   Atlassian's SEC filings. Deliberately separate from the other two, since none
   of it comes from the datathon dataset.
+- Deck Outline (app_pages/deck_outline.py): the presentation plan, kept in sync
+  with docs/deck-outline.md.
 
 analysis/customer_risk.csv and analysis/cleaned_tickets.csv are generated
 output (gitignored) -- a fresh clone (e.g. Streamlit Community Cloud) won't
@@ -60,6 +62,7 @@ risk_scorer = st.Page("app_pages/risk_scorer.py", title="Risk Scorer", icon=":ma
 business_context = st.Page(
     "app_pages/business_context.py", title="Business Context", icon=":material/account_balance:"
 )
+deck_outline = st.Page("app_pages/deck_outline.py", title="Deck Outline", icon=":material/slideshow:")
 
-pg = st.navigation([dashboard, risk_scorer, business_context])
+pg = st.navigation([dashboard, risk_scorer, business_context, deck_outline])
 pg.run()
