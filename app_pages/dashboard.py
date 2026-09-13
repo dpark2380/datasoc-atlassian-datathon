@@ -661,6 +661,17 @@ with tab_segments:
         "k=2 has the cleanest separation (silhouette 0.40); k=4 trades some separation for more actionable "
         "nuance (silhouette 0.30) -- see how the labels are decided, below."
     )
+    # A fixed, named palette instead of the app-wide default sequence: the
+    # first two ATLASSIAN_COLORS entries (blue, light blue) sit too close in
+    # hue and lightness to tell apart at low opacity against a white
+    # background. These four are chosen for pairwise contrast and to stay
+    # legible on white: dark blue, green, purple, and red-orange.
+    CLUSTER_COLORS = {
+        "Low engagement": "#0052CC",
+        "Active, shallow integration": "#00875A",
+        "Integration-heavy, moderate usage": "#6554C0",
+        "Power users": "#DE350B",
+    }
     for k in [2, 4]:
         cluster_col = f"Usage Cluster (k={k})"
         st.markdown(f"**k={k}**")
@@ -671,7 +682,7 @@ with tab_segments:
 
         fig = px.scatter(
             filtered, x="Usage Volume", y="Integration Depth", color=cluster_col,
-            opacity=0.35, render_mode="webgl",
+            color_discrete_map=CLUSTER_COLORS, opacity=0.45, render_mode="webgl",
         )
         fig.update_traces(marker=dict(size=6))
         fig.update_layout(height=650)
