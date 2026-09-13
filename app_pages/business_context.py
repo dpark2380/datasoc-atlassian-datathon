@@ -211,7 +211,11 @@ st.info(
 st.divider()
 
 # --- 6. The hardest question ---------------------------------------------
-st.header("6. The hardest question, and the answer")
+st.header("6. Targeting on movability, not just risk")
+st.caption(
+    "The hardest objection to a risk model, and the answer to it: is the highest-risk customer even "
+    "the right one to target?"
+)
 
 st.markdown(
     "**Peer-reviewed.** The strongest challenge to any risk model is that targeting the highest-risk "
