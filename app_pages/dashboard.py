@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 ROOT = Path(__file__).parent.parent
@@ -353,6 +354,19 @@ with tab_segments:
                 filtered, x="Usage Volume", y="Integration Depth", color=cluster_col,
                 opacity=0.35, render_mode="webgl",
             )
+            # Centroids computed on the full, unfiltered population -- these
+            # are the actual KMeans cluster centres the labels correspond to.
+            # Recomputing them on a sidebar-filtered subset would drift from
+            # the real cluster definition (e.g. filtering to Free removes
+            # most Power users, so their mean position would no longer
+            # represent that cluster).
+            centroids = risk.groupby(cluster_col, observed=True)[["Usage Volume", "Integration Depth"]].mean()
+            fig.add_trace(go.Scatter(
+                x=centroids["Usage Volume"], y=centroids["Integration Depth"],
+                mode="markers+text", text=centroids.index, textposition="top center",
+                marker=dict(symbol="x", size=14, color="black", line=dict(width=2)),
+                name="Centroid", showlegend=False,
+            ))
             st.plotly_chart(fig, width="stretch", key=f"cluster_scatter_k{k}")
 
     st.markdown("#### How these labels are decided")
