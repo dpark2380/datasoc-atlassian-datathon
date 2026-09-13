@@ -356,6 +356,10 @@ with tab_segments:
             filtered, x="Usage Volume", y="Integration Depth", color=cluster_col,
             opacity=0.35, render_mode="webgl",
         )
+        fig.update_traces(marker=dict(size=6))
+        dot_traces = list(fig.data)
+        fig.data = []
+
         # Centroids computed on the full, unfiltered population -- these
         # are the actual KMeans cluster centres the labels correspond to.
         # Recomputing them on a sidebar-filtered subset would drift from
@@ -363,23 +367,43 @@ with tab_segments:
         # most Power users, so their mean position would no longer
         # represent that cluster).
         centroids = risk.groupby(cluster_col, observed=True)[["Usage Volume", "Integration Depth"]].mean()
+
+        # Label lines/text are plain traces, not annotations, and are added
+        # to the figure BEFORE the dot cloud and centroid markers below, so
+        # dots always draw on top and stay readable no matter where a label
+        # line crosses. Each label is pushed outward from the data's center
+        # of mass toward blank space (the cloud runs along the diagonal),
+        # and labels sharing the same outward quadrant are staggered further
+        # apart so they don't sit on top of each other.
+        x_range = filtered["Usage Volume"].max() - filtered["Usage Volume"].min()
+        y_range = filtered["Integration Depth"].max() - filtered["Integration Depth"].min()
+        data_center = filtered[["Usage Volume", "Integration Depth"]].mean()
+        quadrant_seen: dict[tuple[bool, bool], int] = {}
+        for label, row in centroids.iterrows():
+            dx = row["Usage Volume"] - data_center["Usage Volume"]
+            dy = row["Integration Depth"] - data_center["Integration Depth"]
+            quadrant = (dx >= 0, dy >= 0)
+            stagger = quadrant_seen.get(quadrant, 0)
+            quadrant_seen[quadrant] = stagger + 1
+            reach = 0.22 + stagger * 0.14
+            label_x = row["Usage Volume"] + (reach * x_range if dx >= 0 else -reach * x_range)
+            label_y = row["Integration Depth"] + (reach * y_range if dy >= 0 else -reach * y_range)
+            fig.add_trace(go.Scatter(
+                x=[row["Usage Volume"], label_x], y=[row["Integration Depth"], label_y],
+                mode="lines", line=dict(color="red", width=1.5), showlegend=False, hoverinfo="skip",
+            ))
+            fig.add_trace(go.Scatter(
+                x=[label_x], y=[label_y], mode="text", text=[f"<b>{label}</b>"],
+                textfont=dict(color="red", size=14), showlegend=False, hoverinfo="skip",
+            ))
+
+        for trace in dot_traces:
+            fig.add_trace(trace)
         fig.add_trace(go.Scatter(
             x=centroids["Usage Volume"], y=centroids["Integration Depth"],
             mode="markers", marker=dict(symbol="circle", size=14, color="red", line=dict(width=2, color="white")),
             name="Centroid", showlegend=False,
         ))
-        # Push each label radially outward from the data's center of mass, so
-        # it lands in blank space instead of sitting on top of the dot cloud
-        # (the cloud runs along the diagonal, so outward = into a corner).
-        data_center = filtered[["Usage Volume", "Integration Depth"]].mean()
-        for label, row in centroids.iterrows():
-            dx = row["Usage Volume"] - data_center["Usage Volume"]
-            dy = row["Integration Depth"] - data_center["Integration Depth"]
-            fig.add_annotation(
-                x=row["Usage Volume"], y=row["Integration Depth"], text=f"<b>{label}</b>",
-                showarrow=True, arrowhead=2, arrowcolor="red", ax=70 if dx >= 0 else -70,
-                ay=-70 if dy >= 0 else 70, font=dict(color="red", size=14),
-            )
         fig.update_layout(height=650)
         st.plotly_chart(fig, width="stretch", key=f"cluster_scatter_k{k}")
 
