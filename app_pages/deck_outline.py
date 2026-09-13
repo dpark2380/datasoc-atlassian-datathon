@@ -258,14 +258,17 @@ SLIDES = [
         "serves": "Solution & Recommendation",
         "headline": "Match the retention play to the likely reason for low engagement.",
         "figure": (
-            "Two horizontal playbook lanes. **New & Struggling (518): Diagnose → reset milestones → "
-            "30/60/90-day adoption review.** **Established & Low Engagement (893): identify unused "
-            "feature → in-app nudge → short training → human escalation only if needed.**"
+            "Two horizontal playbook lanes with a Primary Product tag on each customer. **New & "
+            "Struggling (518): product-specific onboarding milestone → 30/60/90-day review.** "
+            "**Established & Low Engagement (893): product-specific workflow prompt → short training "
+            "→ human escalation only if needed.** Add examples: Jira production project, Confluence "
+            "team space, Trello board + Butler, Bitbucket PR + Pipelines, and Loom async update."
         ),
         "points": [
+            "Risk category determines intervention intensity; Primary Product determines the workflow.",
             "Make onboarding recovery milestone-based rather than a generic check-in.",
             "Automate the established-account play first so human effort is reserved for failed interventions.",
-            "Do not lead with discounts; solve adoption and value gaps first.",
+            "Treat the workflow as a recommended check, not a detected feature gap; feature-event data is not supplied.",
         ],
         "line": "Retention action should remove the barrier to value, not simply reward disengagement.",
         "source": "research-cs-playbook-actions.md",
@@ -276,9 +279,11 @@ SLIDES = [
         "serves": "Solution & Recommendation",
         "headline": "Protect high-value accounts and test deeper adoption where usage is already healthy.",
         "figure": (
-            "A two-column action panel. **Protect: 661 High-Value Disengaged → CSM-led executive "
-            "value review.** **Expand: 2,318 Active, Shallow Integration accounts → targeted "
-            "integration enablement pilot.** Show the pilot as **target vs control**, not as a promised outcome."
+            "A two-column action panel. **Protect: 661 High-Value Disengaged → product-specific "
+            "executive value review** using measures such as Jira issue throughput, Bitbucket pull "
+            "requests, or Confluence contribution. **Expand: 2,318 Active, Shallow Integration "
+            "accounts → targeted integration enablement pilot.** Show the pilot as **target vs "
+            "control**, not as a promised outcome."
         ),
         "points": [
             "High-value disengagement earns proactive human attention and an agreed recovery plan.",

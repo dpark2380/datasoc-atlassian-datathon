@@ -80,26 +80,69 @@ CLUSTER_K_VALUES = [2, 4]
 ANOMALY_CONTAMINATION = 0.05
 RANDOM_STATE = 42
 
-PLAYBOOK_ACTIONS = {
-    "Monitor Only": "No action, track only.",
-    "New & Struggling": (
-        "Milestone-tracked onboarding review: named CSM owner runs a structured "
-        "adoption session scoped to this account's unused workflows, checked "
-        "against a 30/60/90-day milestone list (Gainsight onboarding model)."
-    ),
-    "High-Value Disengaged": (
-        "Executive Business Review: quarterly exec-to-exec review scoped to this "
-        "account's actual ROI/adoption data, jointly owned by the CSM and account "
-        "leadership, logged via Jira Product Discovery (ChurnZero/Gainsight QBR "
-        "model; Atlassian's own CS team already uses this tool for triage)."
-    ),
-    "Established & Low Engagement": (
-        "Automated feature-specific play: email naming the exact underused "
-        "feature and its value, an in-app nudge 1-2 days later, and a "
-        "complimentary short training session if usage doesn't recover "
-        "(ChurnZero low/mid-touch adoption play)."
-    ),
+PRODUCT_ACTION_FOCUS = {
+    "Jira": {
+        "monitor": "active days, issue activity, workflow automation, and integration depth",
+        "onboarding": "launch one production project, import an active backlog, and configure one workflow automation",
+        "reactivation": "restart a dormant board or backlog workflow, then offer an automation clinic if activity does not recover",
+        "value_review": "connect active teams, issue throughput, automation coverage, and integrations to delivery goals",
+    },
+    "Confluence": {
+        "monitor": "active days, page activity, contributors, and links to Jira work",
+        "onboarding": "launch one team space from a template, publish the core project documentation, and connect it to a live Jira project",
+        "reactivation": "seed a current project hub from a template, prompt contributors to update it, then offer a collaboration clinic",
+        "value_review": "connect active spaces, contributing teams, documentation coverage, and Jira linkage to knowledge-sharing goals",
+    },
+    "Trello": {
+        "monitor": "active days, board activity, collaborators, Power-Ups, and Butler automation",
+        "onboarding": "launch one live board, import the team's workflow, assign owners, and configure one Butler automation",
+        "reactivation": "revive a current team board from a relevant template, then offer a Butler automation setup session",
+        "value_review": "connect active boards, cross-team participation, Power-Up coverage, and Butler automation to workflow goals",
+    },
+    "Bitbucket": {
+        "monitor": "active days, repository activity, pull requests, Pipelines, and Jira integration",
+        "onboarding": "connect one production repository, complete the first pull request, enable Pipelines, and link Jira work items",
+        "reactivation": "restart a dormant repository workflow with a pull-request and Pipelines setup clinic tied to Jira",
+        "value_review": "connect active repositories, pull-request throughput, Pipelines adoption, and Jira integration to engineering goals",
+    },
+    "Loom": {
+        "monitor": "active days, recording activity, viewers, shares, and Jira or Confluence embeds",
+        "onboarding": "record and share the first async update, confirm viewer engagement, and embed it in Jira or Confluence",
+        "reactivation": "restart one recurring async update or walkthrough and prompt sharing through Jira or Confluence",
+        "value_review": "connect active creators, viewer reach, shared recordings, and embedded workflows to communication goals",
+    },
 }
+
+
+def recommended_action(category: str, product: str) -> str:
+    """Return an action whose intensity comes from risk and focus from product.
+
+    These are recommended workflow checks, not detected feature-level gaps: the
+    supplied usage file identifies a primary product but does not contain event
+    telemetry for individual features.
+    """
+    if product not in PRODUCT_ACTION_FOCUS:
+        raise ValueError(f"Unknown product: {product}")
+
+    focus = PRODUCT_ACTION_FOCUS[product]
+    if category == "Monitor Only":
+        return f"{product} monitoring: no outreach; track {focus['monitor']}."
+    if category == "New & Struggling":
+        return (
+            f"Milestone-tracked onboarding review for {product}: {focus['onboarding']}; "
+            "review progress against 30/60/90-day milestones with a named CSM owner."
+        )
+    if category == "Established & Low Engagement":
+        return (
+            f"Automated {product} reactivation play: {focus['reactivation']}; start with an "
+            "in-product prompt and escalate to training only if usage does not recover."
+        )
+    if category == "High-Value Disengaged":
+        return (
+            f"Executive Business Review for {product}: {focus['value_review']}; agree an "
+            "owner, recovery milestones, and a follow-up date with account leadership."
+        )
+    raise ValueError(f"Unknown risk category: {category}")
 
 
 def load_raw() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -389,7 +432,10 @@ def build_customer_risk(
         return "Established & Low Engagement"
 
     df["Risk Category"] = df.apply(categorise, axis=1)
-    df["Recommended Action"] = df["Risk Category"].map(PLAYBOOK_ACTIONS)
+    df["Recommended Action"] = [
+        recommended_action(category, product)
+        for category, product in zip(df["Risk Category"], df["Primary Product"])
+    ]
 
     df = add_usage_clusters(df)
     df = add_usage_anomalies(df)

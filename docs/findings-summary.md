@@ -80,20 +80,26 @@ Grounded in how real customer success teams operate (Gainsight, ChurnZero,
 and Atlassian's own published practices), not generic advice.
 
 For New & Struggling accounts, a named CSM runs a structured onboarding
-session on the specific workflows the account hasn't adopted yet, tracked
-against a 30/60/90-day checklist. Atlassian's own Jira Adoption Guide can be
-the session material.
+session around one product-specific milestone, tracked against a 30/60/90-day
+checklist. Examples include launching a Jira production project, a Confluence
+team space, a Trello board with Butler automation, a Bitbucket pull request
+with Pipelines, or a Loom async update embedded in Jira or Confluence.
 
 For High-Value Disengaged accounts, a quarterly executive business review,
-run jointly by the CSM and account leadership, uses the account's actual
-usage data. Atlassian's Customer Success team already uses Jira Product
-Discovery to prioritize accounts, so this fits into an existing process
-instead of requiring a new one.
+run jointly by the CSM and account leadership, uses product-relevant adoption
+evidence: for example Jira issue throughput, Confluence contribution,
+Bitbucket pull-request and Pipelines adoption, Trello collaboration and
+automation, or Loom creation and viewer reach.
 
-For Established & Low Engagement accounts, an automated sequence names the
-specific feature that's gone unused, followed by an in-app nudge and a
-short training offer if usage doesn't recover. No CSM time is needed unless
-the automated play fails.
+For Established & Low Engagement accounts, an automated sequence recommends
+a product-specific workflow to reactivate, followed by an in-product nudge
+and a short training offer if usage does not recover. No CSM time is needed
+unless the automated play fails.
+
+These are recommended workflow checks, not detected feature gaps. The
+supplied file identifies a primary product and aggregate usage measures, but
+does not contain feature-level event telemetry. Confirm the precise gap
+before acting.
 
 Full detail and sources: [`research-cs-playbook-actions.md`](research-cs-playbook-actions.md).
 

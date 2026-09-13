@@ -33,18 +33,28 @@ class DashboardAppTests(unittest.TestCase):
 
         self.assertFalse(app.exception)
         rendered = "\n".join(markdown.value for markdown in app.markdown)
-        self.assertIn("**Monitor Only — recommended action:** No action, track only.", rendered)
-        self.assertIn(
-            "**New & Struggling — recommended action:** Milestone-tracked onboarding review",
-            rendered,
+        self.assertIn("no outreach; monitor the core activity", rendered)
+        self.assertIn("milestone-tracked onboarding review", rendered)
+        self.assertIn("automated product-specific reactivation play", rendered)
+        self.assertIn("executive value review", rendered)
+
+        action_tables = [
+            dataframe.value
+            for dataframe in app.dataframe
+            if list(dataframe.value.columns)
+            == ["Risk Category", "Primary Product", "Recommended Action"]
+        ]
+        self.assertEqual(len(action_tables), 1)
+        action_table = action_tables[0]
+        self.assertEqual(len(action_table), 20)
+        self.assertEqual(
+            set(action_table["Primary Product"]),
+            {"Jira", "Confluence", "Trello", "Bitbucket", "Loom"},
         )
-        self.assertIn(
-            "**Established & Low Engagement — recommended action:** Automated feature-specific play",
-            rendered,
-        )
-        self.assertIn(
-            "**High-Value Disengaged — recommended action:** Executive Business Review",
-            rendered,
+        self.assertTrue(
+            action_table.apply(
+                lambda row: row["Primary Product"] in row["Recommended Action"], axis=1
+            ).all()
         )
 
 

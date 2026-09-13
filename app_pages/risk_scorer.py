@@ -132,8 +132,12 @@ st.caption(
 st.divider()
 
 # --- What: the recommended action -------------------------------------------
-st.subheader("Recommended action")
+st.subheader(f"Recommended action for {row['Primary Product']}")
 st.markdown(f"**{row['Recommended Action']}**")
+st.caption(
+    "The risk category sets the intervention intensity; Primary Product sets the workflow focus. "
+    "Confirm the specific feature gap with product-level event telemetry or the customer before acting."
+)
 
 st.divider()
 st.caption(

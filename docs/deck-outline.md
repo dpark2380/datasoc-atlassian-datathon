@@ -313,19 +313,27 @@ Time: 35 seconds. Purpose: Solution and Recommendation.
 
 Headline: Match the retention play to the likely reason for low engagement.
 
-Figure to add: two horizontal playbook lanes:
+Figure to add: two horizontal playbook lanes with a Primary Product tag on
+each customer:
 
-- **New & Struggling (518): Diagnose -> reset milestones -> 30/60/90-day
-  adoption review.**
-- **Established & Low Engagement (893): identify unused feature -> in-app
-  nudge -> short training -> human escalation only if needed.**
+- **New & Struggling (518): product-specific onboarding milestone ->
+  30/60/90-day adoption review.**
+- **Established & Low Engagement (893): product-specific workflow prompt ->
+  short training -> human escalation only if needed.**
+
+Add five compact examples: Jira production project; Confluence team space;
+Trello board plus Butler automation; Bitbucket pull request plus Pipelines;
+and Loom async update.
 
 Put on the slide:
 
+- Risk category determines intervention intensity; Primary Product determines
+  the workflow.
 - Make onboarding recovery milestone-based rather than a generic check-in.
 - Automate the established-account play first so human effort is reserved
   for failed interventions.
-- Do not lead with discounts; solve adoption and value gaps first.
+- Treat the workflow as a recommended check, not a detected feature gap;
+  feature-event data is not supplied.
 
 Line to say: Retention action should remove the barrier to value, not simply
 reward disengagement.
@@ -341,7 +349,9 @@ already healthy.
 
 Figure to add: a two-column action panel:
 
-- **Protect: 661 High-Value Disengaged -> CSM-led executive value review.**
+- **Protect: 661 High-Value Disengaged -> product-specific executive value
+  review**, using measures such as Jira issue throughput, Bitbucket pull
+  requests, or Confluence contribution.
 - **Expand: 2,318 Active, Shallow Integration accounts -> targeted
   integration enablement pilot.**
 

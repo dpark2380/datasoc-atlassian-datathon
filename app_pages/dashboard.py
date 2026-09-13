@@ -24,9 +24,9 @@ from app_pages.chart_styling import render_plotly_chart
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT / "analysis"))
 try:
-    from analysis import dashboard_metrics, reliability_checks, sensitivity_checks  # noqa: E402
+    from analysis import dashboard_metrics, eda, reliability_checks, sensitivity_checks  # noqa: E402
 except ImportError:
-    import dashboard_metrics, reliability_checks, sensitivity_checks  # noqa: E402
+    import dashboard_metrics, eda, reliability_checks, sensitivity_checks  # noqa: E402
 
 RISK_CSV = ROOT / "analysis" / "customer_risk.csv"
 CUSTOMERS_CSV = ROOT / "references" / "Dataset" / "customers.csv"
@@ -444,13 +444,10 @@ with tab_risk:
     counts = filtered["Risk Category"].value_counts().reindex(CATEGORY_ORDER).reset_index()
     fig = px.bar(counts, x="Risk Category", y="count")
     render_plotly_chart(fig, width="stretch", key="dash_chart_4")
-    actions_by_category = (
-        risk.groupby("Risk Category", observed=True)["Recommended Action"].first().to_dict()
-    )
     st.markdown(
         "- **Monitor Only**: not at risk. Usage sits above the bottom quarter for this customer's plan "
         "and product peer group. No action.\n"
-        f"    - **Monitor Only — recommended action:** {actions_by_category['Monitor Only']}\n"
+        "    - **Recommended action type:** no outreach; monitor the core activity for the customer's primary product.\n"
         "    - At Risk = Engagement Percentile ≤ 25, where Engagement Percentile is this customer's "
         "Engagement Composite ranked (percentile, 0-100) only against customers on the same Plan Type "
         "and Primary Product.\n"
@@ -461,7 +458,7 @@ with tab_risk:
         "Percentile > 25).\n"
         "- **New & Struggling**: at risk, and recently acquired relative to the rest of the customer "
         "base. Reads as an onboarding problem, not churn.\n"
-        f"    - **New & Struggling — recommended action:** {actions_by_category['New & Struggling']}\n"
+        "    - **Recommended action type:** a milestone-tracked onboarding review centred on one live product workflow.\n"
         "    - Recently acquired = Account Age ≤ the 25th percentile of Account Age across *all* "
         "customers, where Account Age = (2023-05-31 minus Account Created Date), in days.\n"
         "    - This is a relative quartile, not an absolute cutoff like \"under 90 days\": no customer "
@@ -469,21 +466,38 @@ with tab_risk:
         "acquired\" means the youngest 25% of the base, not literally new.\n"
         "- **Established & Low Engagement**: at risk, longer-tenured, and either lower plan tier or lower "
         "embeddedness. A real but lower-stakes churn risk.\n"
-        f"    - **Established & Low Engagement — recommended action:** "
-        f"{actions_by_category['Established & Low Engagement']}\n"
+        "    - **Recommended action type:** an automated product-specific reactivation play, with training only if usage stays low.\n"
         "    - Applies when At Risk is true, Recently Acquired is false, and High-Value (defined below) "
         "is also false.\n"
         "- **High-Value Disengaged**: at risk, longer-tenured, and either Enterprise/Premium tier or "
         "heavily integrated (top quartile of Collaborators + Integrations Used). The account most "
         "worth protecting.\n"
-        f"    - **High-Value Disengaged — recommended action:** "
-        f"{actions_by_category['High-Value Disengaged']}\n"
+        "    - **Recommended action type:** an executive value review using product-specific adoption evidence and recovery milestones.\n"
         "    - High-Value = Plan Type is Enterprise or Premium, OR Embeddedness Percentile ≥ 75.\n"
         "    - Embeddedness Percentile = the percentile rank (0-100), across *all* customers, of "
         "Collaborators and Integrations Used, each standardised and then weighted by its measured "
         "reliability (0.63 and 0.89, giving a 41/59 split). See the Data reliability tab.\n"
         "    - Applies when At Risk is true, Recently Acquired is false, and High-Value is true."
     )
+
+    st.markdown("#### Product-specific recommended actions")
+    st.caption(
+        "Risk category sets the intervention intensity; Primary Product sets the workflow. These are "
+        "recommended workflow checks—not detected feature gaps, because the supplied data has no "
+        "feature-level events."
+    )
+    product_actions = pd.DataFrame(
+        [
+            {
+                "Risk Category": category,
+                "Primary Product": product,
+                "Recommended Action": eda.recommended_action(category, product),
+            }
+            for category in CATEGORY_ORDER
+            for product in eda.PRODUCT_ACTION_FOCUS
+        ]
+    )
+    st.dataframe(product_actions, width="stretch", hide_index=True)
 
     st.subheader("Usage by product")
     st.caption("Secondary real cut: Jira and other daily-use tools show higher engagement than Loom.")
@@ -505,7 +519,8 @@ with tab_risk:
         st.markdown(
             "The first draft of these was generic: send an email, schedule a check-in. That is not a "
             "solution, so each one was replaced with a documented process from a named Customer Success "
-            "platform, each matched to the reason that category is at risk. Full citations "
+            "platform, matched first to the reason that category is at risk and then to the customer's "
+            "Primary Product. Full citations "
             "are in the playbook research doc in the Documentation tab.\n\n"
             "**Monitor Only: no action.** Not sourced, and deliberately so. This is the null case. A model "
             "that recommends action on every account is useless, and saying plainly that 6,248 of 8,320 "
@@ -516,8 +531,9 @@ with tab_risk:
             "behind. Their adoption workshop has a concrete completion target rather than being an "
             "open-ended demo, and the 30/60/90 day checkpoint is theirs too. Chosen for this category "
             "because these accounts are at risk and recently acquired, which reads as an adoption failure "
-            "rather than a relationship in decline. The session material can be Atlassian's own published "
-            "Jira Adoption Guide, so it needs no new collateral.\n\n"
+            "rather than a relationship in decline. The milestone changes by product—for example, launch "
+            "a Jira production project, a Confluence team space, a Bitbucket pull-request workflow, or a "
+            "Loom async update.\n\n"
             "**High-Value Disengaged: executive business review.** Gainsight, ChurnZero and Vitally "
             "publish near-identical guidance: a quarterly exec-to-exec review of delivered ROI, reserved "
             "for the highest-value segment rather than run for everyone. ChurnZero adds including a "
@@ -527,14 +543,15 @@ with tab_risk:
             "here and only here. Logged through Jira Product Discovery, which Atlassian's Customer "
             "Success team already uses for account prioritisation, making it a process extension rather "
             "than a new tool.\n\n"
-            "**Established & Low Engagement: automated feature-specific play.** The sequence is "
-            "ChurnZero's documented low and mid-touch feature adoption play, not an invention: an "
-            "automated trigger when usage of a specific feature stalls, an email naming that feature and "
-            "its benefit, an in-app message one to two days later, then a complimentary training session "
-            "scoped to the unused feature. HubSpot's tech-touch model supports the same routing, keeping "
+            "**Established & Low Engagement: automated product-specific reactivation play.** The sequence "
+            "adapts ChurnZero's documented low and mid-touch feature-adoption play: an automated trigger "
+            "when overall usage stalls, a prompt naming a relevant workflow for the customer's Primary "
+            "Product, then a complimentary training session if activity does not recover. HubSpot's "
+            "tech-touch model supports the same routing, keeping "
             "human time for the high-value tier. Chosen for this category because heavy touch is not cost "
             "justified here, and because most accounts at this size have no assigned owner at all, so the "
-            "intervention has to be as automatic as the detection."
+            "intervention has to be as automatic as the detection. The workflow is a recommended check, "
+            "not a detected feature gap, because feature-event data is not supplied."
         )
         st.warning(
             "Three limits to state if asked. These are vendor-published best practices rather than "

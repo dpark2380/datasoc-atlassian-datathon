@@ -98,13 +98,15 @@ platforms (Gainsight, ChurnZero, HubSpot) actually do for each situation,
 and what Atlassian itself already publishes and practices, and matched an
 action to each category:
 
-New & Struggling gets a milestone-tracked onboarding review, using
-Atlassian's own published Jira Adoption Guide as the session material.
+New & Struggling gets a milestone-tracked onboarding review focused on one
+concrete workflow for the account's Primary Product.
 High-Value Disengaged gets a quarterly executive business review, logged
 through Jira Product Discovery, a tool Atlassian's own Customer Success
 team already uses for account prioritization. Established & Low Engagement
-gets an automated, feature-specific play (name the unused feature, email,
-in-app nudge, then a training offer), costing no CSM time unless it fails.
+gets an automated, product-specific reactivation play followed by a training
+offer, costing no CSM time unless it fails. The product focus is a recommended
+workflow to check, not a detected feature gap; the supplied data has no
+feature-level events.
 
 Full sources: `research-cs-playbook-actions.md`.
 

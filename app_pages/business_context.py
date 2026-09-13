@@ -168,7 +168,7 @@ st.markdown(
     "this matters most.\n"
     "3. **Automate the intervention as well as the detection.** Flagging an account nobody is "
     "assigned to achieves nothing on its own. This is exactly why the Established & Low Engagement play "
-    "is a feature-specific email, then an in-app nudge, then a training offer, with no CSM time spent "
+    "is a product-specific workflow prompt, then an in-app nudge and training offer, with no CSM time spent "
     "unless the automated sequence fails to move usage. The intervention has to be as automatic as the "
     "detection for the tier that has no owner.\n"
     "4. **Reserve human effort for where it is justified.** The High-Value Disengaged play is an "
