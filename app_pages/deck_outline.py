@@ -96,8 +96,8 @@ SLIDES = [
         "title": "7. Why you can trust the split",
         "time": "45 sec", "serves": "Analysis (condense hard, one line each)",
         "points": [
-            "Unsupervised clustering, with no knowledge of the risk rules, independently reproduced the same volume-vs-depth split. High-Value Disengaged draws 64% from the integration-heavy cluster.",
-            "Anomaly detection flags a different 5% of accounts, only 22% overlapping: the rule isn't just re-deriving what any outlier detector finds.",
+            "Unsupervised clustering, with no knowledge of the risk rules, independently reproduced the same volume-vs-depth split. High-Value Disengaged draws 62% from the integration-heavy cluster.",
+            "Anomaly detection flags a different 5% of accounts, only 18% overlapping: the rule isn't just re-deriving what any outlier detector finds.",
             "Every judgment-call parameter was varied and the population barely moves. Bootstrap resampling agrees 99.1% of the time.",
         ],
         "source": "findings-ml-segments.md, findings-sensitivity.md",

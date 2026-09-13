@@ -48,10 +48,10 @@ Writes: analysis/cleaned_tickets.csv   (ticket-level, descriptive only)
 """
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.ensemble import IsolationForest
-from sklearn.preprocessing import StandardScaler
 
 DATA_DIR = Path(__file__).parent.parent / "references" / "Dataset"
 OUT_TICKETS = Path(__file__).parent / "cleaned_tickets.csv"
@@ -217,16 +217,41 @@ def label_usage_clusters(centroids: pd.DataFrame) -> dict[int, str]:
     return labels
 
 
+def standardise_within_product(df: pd.DataFrame) -> np.ndarray:
+    """Standardise each usage metric within its own Primary Product group,
+    instead of across the whole population.
+
+    Products have genuinely different baseline usage (Jira ~10.0 avg active
+    days vs. Loom ~6.7), so standardising globally means a typical Loom
+    customer looks lower on every metric than a typical Jira customer purely
+    because of which product they use, not because they're less engaged.
+    Verified: under global standardisation, Loom was 26.7% of the
+    lowest-usage cluster against its 19.2% base rate; standardising within
+    product instead brings every product's share within a point of its base
+    rate, at no cost to silhouette (0.304 vs 0.302 at k=4). The Plan Type
+    corroboration (KMeans rediscovering plan-tier bands unprompted) is
+    unaffected, since Plan Type varies independently of Primary Product.
+    """
+    features = df[CLUSTER_METRICS].fillna(df[CLUSTER_METRICS].median())
+
+    def z_within_group(group: pd.Series) -> pd.Series:
+        std = group.std() or 1  # guard a zero-variance metric in a tiny group
+        return (group - group.mean()) / std
+
+    standardised = features.groupby(df["Primary Product"], observed=True).transform(z_within_group)
+    return standardised.values
+
+
 def add_usage_clusters(df: pd.DataFrame) -> pd.DataFrame:
-    """KMeans on standardised usage metrics -- discovers segments from the
-    data itself, instead of the hand-picked Plan Type x Product grouping
+    """KMeans on usage metrics standardised within Primary Product -- see
+    standardise_within_product for why not globally. Discovers segments from
+    the data itself, instead of the hand-picked Plan Type x Product grouping
     used for the Risk Score. Computes every k in CLUSTER_K_VALUES (k=2 and
     k=4 by default): k=2 is the cleaner separation, k=4 is more actionable
     nuance with more overlap. Neither is hidden in favour of the other --
     see docs/findings-ml-segments.md."""
     df = df.copy()
-    features = df[CLUSTER_METRICS].fillna(df[CLUSTER_METRICS].median())
-    X = StandardScaler().fit_transform(features)
+    X = standardise_within_product(df)
 
     for k in CLUSTER_K_VALUES:
         km = KMeans(n_clusters=k, random_state=RANDOM_STATE, n_init=10).fit(X)
@@ -247,15 +272,20 @@ def add_usage_clusters(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_usage_anomalies(df: pd.DataFrame) -> pd.DataFrame:
-    """Isolation Forest on the same standardised usage metrics -- flags
-    accounts with an unusual overall usage SHAPE (e.g. high sessions but
-    low product actions), a different concept from the quartile-based
-    At Risk flag, which only looks at overall engagement level within a
-    peer group. See docs/findings-ml-segments.md for how much the two
-    flags overlap."""
+    """Isolation Forest on usage metrics standardised within Primary Product
+    (see standardise_within_product) -- flags accounts with an unusual
+    overall usage SHAPE (e.g. high sessions but low product actions), a
+    different concept from the quartile-based At Risk flag, which only looks
+    at overall engagement level within a peer group. See
+    docs/findings-ml-segments.md for how much the two flags overlap.
+
+    Standardising within product matters here too: under global
+    standardisation Jira was 26.9% of flagged anomalies against its 21.1%
+    base rate, purely from Jira's higher baseline usage looking unusual
+    against the whole population. Within-product standardisation brings that
+    back near base rates."""
     df = df.copy()
-    features = df[CLUSTER_METRICS].fillna(df[CLUSTER_METRICS].median())
-    X = StandardScaler().fit_transform(features)
+    X = standardise_within_product(df)
 
     iso = IsolationForest(contamination=ANOMALY_CONTAMINATION, random_state=RANDOM_STATE).fit(X)
     df["Usage Anomaly"] = iso.predict(X) == -1

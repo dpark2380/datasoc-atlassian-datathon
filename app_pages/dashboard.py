@@ -55,10 +55,6 @@ DOC_FILES = {
 }
 
 
-def z_score(col: pd.Series) -> pd.Series:
-    return (col - col.mean()) / col.std()
-
-
 def _module_version(*modules) -> str:
     """Hash of one or more modules' source, to use as an explicit cache key.
 
@@ -104,12 +100,19 @@ def load_data():
     _check_known_values(risk["Risk Category"], CATEGORY_ORDER, "Risk Category")
     risk["Plan Type"] = pd.Categorical(risk["Plan Type"], categories=PLAN_ORDER, ordered=True)
     risk["Risk Category"] = pd.Categorical(risk["Risk Category"], categories=CATEGORY_ORDER, ordered=True)
-    risk["Usage Volume"] = pd.concat(
-        [z_score(risk[c]) for c in ["Active Days", "Sessions", "Product Actions"]], axis=1
-    ).mean(axis=1)
-    risk["Integration Depth"] = pd.concat(
-        [z_score(risk[c]) for c in ["Collaborators", "Integrations Used"]], axis=1
-    ).mean(axis=1)
+    # Standardised WITHIN Primary Product, matching how the clustering itself
+    # is computed (analysis/eda.py's standardise_within_product). Plotting
+    # these on a globally-standardised axis instead would show a "Power
+    # users" point sitting in the visually low-volume region just because
+    # its product's baseline is lower, which is the exact distortion the
+    # within-product fix removed from the clustering in the first place.
+    def z_within_product(cols: list[str]) -> pd.Series:
+        return risk.groupby("Primary Product", observed=True)[cols].transform(
+            lambda s: (s - s.mean()) / (s.std() or 1)
+        ).mean(axis=1)
+
+    risk["Usage Volume"] = z_within_product(["Active Days", "Sessions", "Product Actions"])
+    risk["Integration Depth"] = z_within_product(["Collaborators", "Integrations Used"])
     tickets = pd.read_csv(TICKETS_CSV)
     usage = pd.read_csv(USAGE_CSV)
     return risk, tickets, usage
@@ -342,7 +345,15 @@ with tab_segments:
             "- Usage volume and integration depth correlate at 0.63 in this data, so the four groups sit "
             "along one diagonal, not in four separated corners. They're useful bands for prioritisation, "
             "not four naturally distinct customer types. k=2 (below) shows the same split without that "
-            "overstatement."
+            "overstatement.\n"
+            "- **Added after review:** the five usage metrics were originally standardised globally (one "
+            "mean/std for the whole population) before clustering. Products have real, different usage "
+            "baselines (Jira ~10.0 avg active days vs. Loom ~6.7), so a typical Loom customer looked lower "
+            "on every metric purely from which product they use, not because they're less engaged. This "
+            "put Loom at 26.7% of the lowest-usage cluster against its 19.2% base rate. Standardising "
+            "within each Primary Product instead removes that: every product now lands within a point of "
+            "its base rate, at no cost to cluster separation (silhouette 0.304 vs. 0.302), and the "
+            "plan-tier corroboration below is unaffected since Plan Type varies independently of product."
         )
 
     st.caption("Usage anomalies (Isolation Forest, 5% contamination) vs. the At Risk flag:")
@@ -408,11 +419,13 @@ with tab_segments:
         f"{integration_heavy['Enterprise'] + integration_heavy['Premium']:.0f}% Enterprise or Premium. "
         f"Low engagement is {low_engagement['Free'] + low_engagement['Standard']:.0f}% Free or Standard. "
         "These clusters track what a customer pays for.\n"
-        f"- **Product explains much less.** Every product sits near a {product_base.min():.0f} to "
-        f"{product_base.max():.0f}% share of the base. The largest distortions are Loom at "
-        f"{product_mix.loc['Low engagement', 'Loom']:.0f}% of Low engagement and Jira at "
-        f"{product_mix.loc['Power users', 'Jira']:.0f}% of Power users. Real, but a long way from the "
-        "clusters simply restating which product someone bought.\n"
+        f"- **Product explains almost none of it.** Every product sits within a point of its "
+        f"{product_base.min():.0f} to {product_base.max():.0f}% base rate in every cluster (e.g. Loom is "
+        f"{product_mix.loc['Low engagement', 'Loom']:.0f}% of Low engagement, base rate "
+        f"{product_base['Loom']:.0f}%). That's not an accident: the five usage metrics are standardised "
+        "within each Primary Product before clustering, precisely so a naturally lower-touch product like "
+        "Loom doesn't get its customers lumped into 'low engagement' just for using a naturally "
+        "lower-touch product.\n"
         "- **The plan-tier result is evidence, not a defect.** KMeans was given five usage metrics and "
         "nothing else. It never saw Plan Type or Primary Product. Reconstructing plan bands at that "
         "concentration from behaviour alone is independent confirmation that the usage-to-plan "
