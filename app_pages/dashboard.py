@@ -960,7 +960,17 @@ with tab_reliability:
         f"A ratio of 1.0 means real slopes are indistinguishable from slopes fitted to randomly reordered "
         f"data. At {trend['sd_ratio']:.3f}, that is what we have.\n\n"
         f"The split-half check says the same thing from another angle. A real trend persists, so a customer "
-        f"trending up in the first half should still be trending up in the second. The actual correlation "
+        f"trending up in the first half should still be trending up in the second."
+    )
+    st.caption(
+        "What this is: each customer's 5 monthly values are split into two overlapping halves, months 1-3 "
+        "and months 3-5, and a slope is fit separately within each half. That gives every customer a "
+        "first-half slope and a second-half slope, and the two are correlated across all customers. A real, "
+        "consistent trend would show up as a positive correlation, since someone trending up early should "
+        "still be trending up late."
+    )
+    st.markdown(
+        f"The actual correlation "
         f"between first-half and second-half slopes is **{trend['split_half_corr']:.3f}**. It is negative, "
         f"which is mean reversion: a customer above their own average one month tends to be below it the "
         f"next. That is fluctuation around a stable level, not a trajectory. Consistent with both, "
