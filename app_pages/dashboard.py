@@ -785,7 +785,7 @@ with tab_segments:
     anomaly_plot["Usage Anomaly"] = anomaly_plot["Usage Anomaly"].map({True: "Anomaly", False: "Not anomaly"})
     fig = px.scatter(
         anomaly_plot.sort_values("Usage Anomaly"), x="Usage Volume", y="Integration Depth", color="Usage Anomaly",
-        color_discrete_map={"Not anomaly": "#DFE1E6", "Anomaly": "#DE350B"},
+        color_discrete_map={"Not anomaly": "#6B778C", "Anomaly": "#E10600"},
         opacity=0.5, render_mode="webgl",
     )
     render_plotly_chart(fig, width="stretch", key="dash_chart_7")
