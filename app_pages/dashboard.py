@@ -321,6 +321,36 @@ with tab_eda:
             icon=":material/warning:",
         )
 
+        st.markdown("#### Ticket volume doesn't track usage trend either")
+        st.caption(
+            "What this chart shows: split customers into quartiles of their own Active Days trend slope "
+            "(Q1 declining fastest, Q4 growing fastest) and compare average ticket count per quartile. If "
+            "tickets tracked anything real about a customer's trajectory, a collapsing account should file "
+            "noticeably more, or fewer, tickets than a growing one."
+        )
+        trend_quartile = pd.qcut(
+            risk["Active Days Slope"], 4,
+            labels=["Q1: declining fastest", "Q2: declining", "Q3: growing", "Q4: growing fastest"],
+        )
+        by_trend_quartile = risk.groupby(trend_quartile, observed=True)["Ticket Count"].mean().reset_index()
+        by_trend_quartile.columns = ["Usage Trend Quartile", "Ticket Count"]
+        fig = px.bar(
+            by_trend_quartile, x="Usage Trend Quartile", y="Ticket Count",
+            color="Usage Trend Quartile",
+            color_discrete_sequence=["#B3D4FF", "#4C9AFF", "#2684FF", "#0052CC"],
+        )
+        fig.update_layout(showlegend=False)
+        render_plotly_chart(fig, width="stretch", key="eda_ticket_by_trend_quartile")
+        st.caption(
+            "Caveat, stated plainly: this doesn't add independent evidence beyond the trend-noise finding "
+            "in the Data reliability tab. Active Days Slope is fit on the same 5-month panel already shown "
+            "there to produce slopes indistinguishable from random reshuffles (SD ratio near 1.0), with a "
+            "negative first-half/second-half correlation (mean reversion, not a real trajectory). If the "
+            "slope itself is mostly noise, splitting customers into quartiles of it is close to a random "
+            "split, so a flat ticket count across quartiles is the expected result either way, not new proof "
+            "that tickets are disconnected from real behaviour."
+        )
+
     with usage_detail:
         st.markdown("#### Usage is stable per customer over time")
         st.caption(
