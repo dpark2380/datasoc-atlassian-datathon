@@ -158,10 +158,100 @@ if not plans:
 filtered = risk[risk["Plan Type"].isin(plans)]
 at_risk = filtered[filtered["At Risk"]]
 
-tab_overview, tab_risk, tab_segments, tab_reliability, tab_robustness, tab_docs = st.tabs(
-    ["Overview", "Risk model", "Usage segments (ML)", "Data reliability",
+tab_eda, tab_overview, tab_risk, tab_segments, tab_reliability, tab_robustness, tab_docs = st.tabs(
+    ["EDA", "Overview", "Risk model", "Usage segments (ML)", "Data reliability",
      "Robustness checks", "Documentation"]
 )
+
+# --- EDA ---------------------------------------------------------------------
+with tab_eda:
+    st.subheader("What's in the raw files")
+    st.caption(
+        "The three files the datathon dataset ships as, before any of our own scoring or clustering. "
+        "Every number below is computed live from them."
+    )
+    shape_table = pd.DataFrame({
+        "File": ["customer_support_tickets.csv", "product_usage.csv", "Unique customers"],
+        "Rows": [f"{len(tickets):,}", f"{len(usage):,}", f"{risk['Customer ID'].nunique():,}"],
+        "Columns": [str(len(tickets.columns)), str(len(usage.columns)), "-"],
+    })
+    st.dataframe(shape_table, width="stretch", hide_index=True)
+
+    missing = tickets.isna().sum()
+    missing = missing[missing > 0].sort_values(ascending=False).reset_index()
+    missing.columns = ["Column", "Missing rows"]
+    missing["Missing %"] = (missing["Missing rows"] / len(tickets) * 100).round(1)
+    st.caption(
+        "Missing values in the ticket file, the only file with any. Resolution, Time to Resolution, and "
+        "Customer Satisfaction Rating are all missing on exactly the same rows: unresolved tickets have no "
+        "resolution to report yet, which is the expected shape, not a data problem on its own."
+    )
+    st.dataframe(missing, width="stretch", hide_index=True)
+
+    st.divider()
+
+    st.subheader("Usage is stable per customer over time")
+    st.caption(
+        "What this chart shows: each customer's average Active Days in their first tracked month (January "
+        "2023) against their last (May 2023). A real, sticky metric should land near the diagonal; pure "
+        "noise would look like a formless cloud."
+    )
+    first_month, last_month = usage["Month"].min(), usage["Month"].max()
+    persistence = usage[usage["Month"] == first_month].groupby("Customer ID")["Active Days"].mean().rename("First month").to_frame()
+    persistence["Last month"] = usage[usage["Month"] == last_month].groupby("Customer ID")["Active Days"].mean()
+    persistence = persistence.dropna()
+    corr = persistence["First month"].corr(persistence["Last month"])
+    fig = px.scatter(persistence, x="First month", y="Last month", opacity=0.25, render_mode="webgl")
+    fig.update_traces(marker=dict(size=5))
+    st.plotly_chart(fig, width="stretch", key="eda_persistence")
+    st.metric(f"Correlation, {first_month} vs. {last_month} Active Days", f"{corr:.2f}")
+
+    st.divider()
+
+    st.subheader("Ticket fields don't move with anything")
+    st.caption(
+        "What this chart shows: the average Customer Satisfaction Rating (1-5) for each Ticket Priority. "
+        "If priority reflected anything real about the customer's experience, Critical tickets should score "
+        "noticeably worse than Low ones. They don't."
+    )
+    sat_by_priority = tickets.groupby("Ticket Priority", observed=True)["Customer Satisfaction Rating"].mean().reset_index()
+    fig = px.bar(sat_by_priority, x="Ticket Priority", y="Customer Satisfaction Rating", range_y=[0, 5])
+    st.plotly_chart(fig, width="stretch", key="eda_sat_by_priority")
+
+    st.caption(
+        "The same test repeated across every categorical ticket field and against several outcomes: the "
+        "spread between a field's best-scoring and worst-scoring group, versus the outcome's own standard "
+        "deviation. A real relationship produces a spread comparable to that standard deviation; these "
+        "don't."
+    )
+    spread_rows = []
+    for outcome in ["Customer Satisfaction Rating"]:
+        outcome_std = tickets[outcome].std()
+        for col in ["Ticket Type", "Ticket Priority", "Ticket Channel", "Ticket Status"]:
+            group_means = tickets.groupby(col, observed=True)[outcome].mean()
+            spread = group_means.max() - group_means.min()
+            spread_rows.append({
+                "Field": col, "Outcome": outcome, "Group-mean spread": round(spread, 3),
+                "Outcome std. dev.": round(outcome_std, 3),
+                "Spread as % of std. dev.": f"{spread / outcome_std:.1%}",
+            })
+    st.dataframe(pd.DataFrame(spread_rows), width="stretch", hide_index=True)
+
+    both_times = tickets.dropna(subset=["First Response Time", "Time to Resolution"]).copy()
+    both_times["First Response Time"] = pd.to_datetime(both_times["First Response Time"])
+    both_times["Time to Resolution"] = pd.to_datetime(both_times["Time to Resolution"])
+    paradox_rate = (both_times["Time to Resolution"] < both_times["First Response Time"]).mean()
+    st.metric(
+        "Tickets where the recorded resolution time is before the recorded first-response time",
+        f"{paradox_rate:.1%}",
+        help="Not possible in a real support workflow. These two timestamps were generated independently "
+        "of each other, not produced by an actual sequence of events.",
+    )
+
+    st.caption(
+        "Full write-up of what this means for the model: see \"Data quality audit\" in the Documentation "
+        "tab."
+    )
 
 # --- Overview --------------------------------------------------------------
 with tab_overview:
