@@ -230,6 +230,52 @@ with tab_risk:
         width="stretch",
     )
 
+    with st.expander("Where each recommended action came from", expanded=False):
+        st.markdown(
+            "The first draft of these was generic: send an email, schedule a check-in. That is not a "
+            "solution, so each one was replaced with a documented process from a named Customer Success "
+            "platform, matched to why that category is at risk rather than just how badly. Full citations "
+            "are in the playbook research doc in the Documentation tab.\n\n"
+            "**Monitor Only: no action.** Not sourced, and deliberately so. This is the null case. A model "
+            "that recommends action on every account is useless, and saying plainly that 6,248 of 8,320 "
+            "accounts need nothing is what makes the other three credible.\n\n"
+            "**New & Struggling: milestone-tracked onboarding review.** From Gainsight's published "
+            "onboarding process: a kickoff with a named owner, customer-side pre-work, and progress "
+            "tracked against segment-specific milestones using a report that flags accounts falling "
+            "behind. Their adoption workshop has a concrete completion target rather than being an "
+            "open-ended demo, and the 30/60/90 day checkpoint is theirs too. Chosen for this category "
+            "because these accounts are at risk and recently acquired, which reads as an adoption failure "
+            "rather than a relationship in decline. The session material can be Atlassian's own published "
+            "Jira Adoption Guide, so it needs no new collateral.\n\n"
+            "**High-Value Disengaged: executive business review.** Gainsight, ChurnZero and Vitally "
+            "publish near-identical guidance: a quarterly exec-to-exec review of delivered ROI, reserved "
+            "for the highest-value segment rather than run for everyone. ChurnZero adds including a "
+            "leadership attendee as a signal of commitment, and pairing a technical resource when the "
+            "review gets into implementation detail. Chosen for this category because it is the tier "
+            "above the size threshold where Atlassian does assign people, so human effort is justified "
+            "here and only here. Logged through Jira Product Discovery, which Atlassian's Customer "
+            "Success team already uses for account prioritisation, making it a process extension rather "
+            "than a new tool.\n\n"
+            "**Established & Low Engagement: automated feature-specific play.** The sequence is "
+            "ChurnZero's documented low and mid-touch feature adoption play, not an invention: an "
+            "automated trigger when usage of a specific feature stalls, an email naming that feature and "
+            "its benefit, an in-app message one to two days later, then a complimentary training session "
+            "scoped to the unused feature. HubSpot's tech-touch model supports the same routing, keeping "
+            "human time for the high-value tier. Chosen for this category because heavy touch is not cost "
+            "justified here, and because most accounts at this size have no assigned owner at all, so the "
+            "intervention has to be as automatic as the detection."
+        )
+        st.warning(
+            "Three limits to state if asked. These are vendor-published best practices rather than "
+            "experimentally proven interventions, and Gainsight and ChurnZero publish them partly as "
+            "marketing for their own platforms. No outcome data proves they work on Atlassian's customers "
+            "specifically, because this dataset has no churn label. And differentiating the action by "
+            "category is our attempt to target responsiveness rather than raw risk, which is the right "
+            "instinct per the targeting literature, but the responsiveness assumptions are themselves "
+            "unvalidated.",
+            icon=":material/balance:",
+        )
+
 # --- Usage segments (ML) -----------------------------------------------------
 with tab_segments:
     st.subheader("Usage segments (unsupervised, independent of the Risk Score)")
