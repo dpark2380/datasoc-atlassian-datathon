@@ -105,7 +105,7 @@ st.caption(
     f"(bottom 25% = At Risk). Embeddedness percentile: {row['Embeddedness Percentile']:.0f}. "
     f"Tenure: {'recently acquired' if row['Recently Acquired (relative)'] else 'established'} relative to our customer base. "
     f"Usage segment: {row['Usage Cluster']}."
-    + (" Flagged as a usage anomaly (unusual pattern, not just low volume)." if row["Usage Anomaly"] else "")
+    + (" Flagged as a usage anomaly, meaning the shape of their usage is unusual, which is a different signal from low volume." if row["Usage Anomaly"] else "")
 )
 
 st.divider()

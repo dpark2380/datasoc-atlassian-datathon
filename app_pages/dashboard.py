@@ -234,7 +234,7 @@ with tab_risk:
         st.markdown(
             "The first draft of these was generic: send an email, schedule a check-in. That is not a "
             "solution, so each one was replaced with a documented process from a named Customer Success "
-            "platform, matched to why that category is at risk rather than just how badly. Full citations "
+            "platform, each matched to the reason that category is at risk. Full citations "
             "are in the playbook research doc in the Documentation tab.\n\n"
             "**Monitor Only: no action.** Not sourced, and deliberately so. This is the null case. A model "
             "that recommends action on every account is useless, and saying plainly that 6,248 of 8,320 "
@@ -344,7 +344,7 @@ with tab_segments:
     st.subheader("Where the usage anomalies sit")
     st.caption(
         "The same axes, colored by whether Isolation Forest flagged the account as an unusual usage shape "
-        "(not just a low level, a different concept from the At Risk flag)."
+        "(an unusual shape of usage, which is a different concept from the At Risk flag)."
     )
     anomaly_plot = filtered.copy()
     anomaly_plot["Usage Anomaly"] = anomaly_plot["Usage Anomaly"].map({True: "Anomaly", False: "Not anomaly"})
@@ -395,7 +395,7 @@ with tab_segments:
 
 # --- Data reliability ---------------------------------------------------------
 with tab_reliability:
-    st.subheader("We audited our own data, not just the organisers'")
+    st.subheader("We ran the same audit on our own data")
     st.caption(
         "The ticket audit showed that file is random. This is the same audit turned on the usage data "
         "we did build the model on. It changed how the model is weighted and what one category is called. "
