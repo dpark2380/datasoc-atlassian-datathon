@@ -195,8 +195,8 @@ invented sentiment score.
 
 2. New & Struggling gets a milestone-tracked onboarding review, not a generic
    check-in. Assign a named CSM owner who runs a structured adoption session
-   scoped to the specific Jira/Confluence/Trello/Bitbucket/Loom workflows this
-   account has set up but not adopted, tracked against a 30/60/90-day
+   scoped to one recommended workflow for the account's Primary Product,
+   tracked against a 30/60/90-day
    milestone checklist rather than a single call. This mirrors Gainsight's
    documented onboarding milestone process (gainsight.com/blog/customer-onboarding-template)
    and can reuse Atlassian's own published Jira Adoption Guide content as the
@@ -214,16 +214,17 @@ invented sentiment score.
    this escalation can be logged and tracked the same way, making it a
    process extension rather than a new tool.
 
-4. Established & Declining gets a usage-triggered feature-specific play, not
-   a generic email. Replace the scheduled check-in with an automated play
-   scoped to the specific feature or product (of the five in the suite) whose
-   usage has dropped: an email naming that specific feature and its value,
-   an in-app nudge one to two days later, and a complimentary short training
-   session on that feature if usage doesn't recover. This directly follows
+4. Established & Low Engagement gets a usage-triggered product-specific play,
+   not a generic email. Replace the scheduled check-in with an automated play
+   suggesting a relevant workflow for the customer's Primary Product, an
+   in-app nudge one to two days later, and a complimentary short training
+   session if usage doesn't recover. This adapts
    ChurnZero's documented low/mid-touch play structure
    (churnzero.com/blog/quick-start-guide-to-low-and-mid-touch-feature-adoption),
    costs no CSM time up front, and only escalates to a human if the automated
-   play doesn't move usage.
+   play doesn't move usage. Because the supplied data contains aggregate
+   product usage rather than feature events, this workflow is a recommended
+   diagnostic starting point, not a detected unused feature.
 
 ## Sources
 

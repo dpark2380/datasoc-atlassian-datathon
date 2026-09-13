@@ -182,23 +182,30 @@ within a plan tier.
 ### 8. Other checks
 
 - Every single customer in `customers.csv` (8,320 of 8,320) has filed at
-  least one ticket, at every Plan Type, 100% each. This is a structural
-  fact about how the dataset was built (ticket volume is confirmed flat
-  at ~1.0-1.02 per customer everywhere), not a discovery: there's no
-  "never contacted support" segment to find in this data.
-- A ticket's "Product Purchased" field lines up with what the customer
-  actually uses in `product_usage.csv` 100% of the time: every
-  ticket-filer's stated Product Purchased matches a product that
-  shows up in their own usage rows. This is worth calling out separately
-  from the other ticket fields, because it is *not* a trivial check:
-  98.6% of customers (8,202 of 8,320) only use one product across the
-  whole five-month window, so this isn't "everyone uses everything
-  anyway." Product Purchased is internally consistent with the real usage
-  data, unlike Ticket Type, Ticket Subject, Priority, and Channel, which
-  are confirmed randomly assigned. It's a real, if narrow, fact about the
-  ticket file: which product a customer complained about is trustworthy,
-  even though nothing else about the ticket (why, how urgent, how it went,
-  how satisfied they were) is.
+  least one ticket. Under random assignment of 8,469 tickets across 8,320
+  customers, about 3,006 customers would be expected to have none (Poisson
+  approximation, lambda = 1.018). Getting zero is not a coincidence: it
+  means `customers.csv` is the deduplicated identity list built FROM the
+  ticket file, not a separately-generated customer table that tickets were
+  randomly matched to afterwards. There's no "never contacted support"
+  segment to find in this data, because the customer list only contains
+  people who contacted support.
+- **Correction to an earlier version of this document.** We previously
+  reported that a ticket's "Product Purchased" field lining up with
+  `product_usage.csv` was "a real, if narrow, fact" and "not a trivial
+  check". On closer inspection this is wrong: it's circular, not
+  independent evidence. Checking the exact SET of products per customer
+  (not just whether one overlaps) shows a 100% match between what a
+  customer's tickets mention and what products they have usage rows for,
+  for every customer, including the 114 customers with 2 products and the
+  4 with 3. That level of exactness only happens if `product_usage.csv`
+  was generated per customer per ticket-mentioned product, i.e. the usage
+  file was built FROM the ticket file's product field, the same way
+  `customers.csv` was built from its email field. The consistency was
+  guaranteed by construction. It says nothing about whether Product
+  Purchased is trustworthy in the sense the other ticket fields are not;
+  it says the two files share a common origin. See
+  `docs/research-ticket-data-uses.md` for the full verification.
 
 ## So what
 
@@ -214,11 +221,10 @@ On the ticket side, this pass does not overturn the audit finding. Every
 ticket-level categorical field we hadn't yet tested (Age, Gender, Ticket
 Subject, Ticket Status, ticket count) comes back the same way Ticket Type,
 Priority, Channel, and Satisfaction already did: no real relationship to
-anything, including to the "real" half of the data. The one new fact worth
-keeping is narrow: the Product Purchased field on a ticket is genuinely
-tied to what that customer uses, so it's not fabricated. But it doesn't
-unlock anything new, since which tickets are worse, how they were handled,
-and how the customer felt about it all remain unanswerable questions in
+anything, including to the "real" half of the data. The Product Purchased
+match is not an exception to that; it's a fact about how the files were
+generated, not a fact about which tickets are worse, how they were
+handled, or how the customer felt, all of which remain unanswerable in
 this dataset. The recommendation to the client stands as already written:
 the usage-engagement analysis is what we can stand behind, and the ticket
 data's audit finding is what we tell them needs to be captured differently

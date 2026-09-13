@@ -29,12 +29,18 @@ context where shown at all):
   - Resolution Hours, Ticket Status: incoherent timestamps / no
     relationship to usage.
   - Ticket volume per customer: flat across every segment (~1.0-1.02
-    tickets/customer everywhere; every customer has at least one ticket).
+    tickets/customer everywhere). Every one of the 8,320 customers has at
+    least one ticket, against ~3,006 expected under random assignment --
+    customers.csv is the deduplicated identity list PROJECTED FROM the
+    ticket file, not an independent table tickets were randomly matched to.
   - No free-text field exists in this dataset at all.
   - Industry / Region / Company Size: flat, no relationship to usage.
-  - One narrow exception: a ticket's Product Purchased field is 100%
-    consistent with the customer's real product_usage.csv rows -- kept
-    only as a validity note, not used as a signal.
+  - The 100% match between a ticket's Product Purchased and the customer's
+    product_usage.csv rows is NOT independent validation -- it's circular.
+    product_usage.csv was generated per customer per ticket-mentioned
+    product (verified: exact product SET matches between tickets and usage
+    for 100% of customers), so this consistency was guaranteed by
+    construction. See docs/research-ticket-data-uses.md.
 
 Run: .venv/bin/python analysis/eda.py
 Writes: analysis/cleaned_tickets.csv   (ticket-level, descriptive only)
@@ -42,39 +48,101 @@ Writes: analysis/cleaned_tickets.csv   (ticket-level, descriptive only)
 """
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+from sklearn.cluster import KMeans
+from sklearn.ensemble import IsolationForest
 
 DATA_DIR = Path(__file__).parent.parent / "references" / "Dataset"
 OUT_TICKETS = Path(__file__).parent / "cleaned_tickets.csv"
 OUT_CUSTOMER_RISK = Path(__file__).parent / "customer_risk.csv"
 
 ENGAGEMENT_METRICS = ["Active Days", "Sessions", "Product Actions"]
-# Integrations Used weighted 2x Collaborators -- confirmed sharper tier
-# signal (~5x spread Free->Enterprise vs ~2x for Collaborators).
-EMBEDDEDNESS_WEIGHTS = {"Collaborators": 1, "Integrations Used": 2}
+EMBEDDEDNESS_METRICS = ["Collaborators", "Integrations Used"]
+# Every usage column the pipeline loads per customer. Kept separate from the
+# scoring metric lists above: clustering and the risk scorer's peer chart need
+# all five regardless of how the composites are weighted.
+USAGE_METRICS = ENGAGEMENT_METRICS + EMBEDDEDNESS_METRICS
 TIER_VALUE = {"Free": 0.0, "Standard": 1 / 3, "Premium": 2 / 3, "Enterprise": 1.0}
 USAGE_SNAPSHOT_DATE = pd.Timestamp("2023-05-31")  # end of the product_usage window
 
-PLAYBOOK_ACTIONS = {
-    "Monitor Only": "No action -- track only.",
-    "New & Struggling": (
-        "Milestone-tracked onboarding review: named CSM owner runs a structured "
-        "adoption session scoped to this account's unused workflows, checked "
-        "against a 30/60/90-day milestone list (Gainsight onboarding model)."
-    ),
-    "High-Value Disengaged": (
-        "Executive Business Review: quarterly exec-to-exec review scoped to this "
-        "account's actual ROI/adoption data, jointly owned by the CSM and account "
-        "leadership, logged via Jira Product Discovery (ChurnZero/Gainsight QBR "
-        "model; Atlassian's own CS team already uses this tool for triage)."
-    ),
-    "Established & Declining": (
-        "Automated feature-specific play: email naming the exact underused "
-        "feature and its value, an in-app nudge 1-2 days later, and a "
-        "complimentary short training session if usage doesn't recover "
-        "(ChurnZero low/mid-touch adoption play)."
-    ),
+# Unsupervised segments, independent of the Risk Score above -- see
+# docs/findings-ml-segments.md for the full k=2..6 silhouette scan and the
+# 0.63 correlation between usage volume and integration depth (why the k=4
+# scatter shows one continuous diagonal band, not 4 separated blobs). Both
+# k=2 (cleanest separation, silhouette 0.40, low/high usage only) and k=4
+# (silhouette 0.30, splits volume from depth, more actionable nuance but
+# with overlapping boundaries) are kept -- neither is "the" answer.
+CLUSTER_METRICS = ["Active Days", "Sessions", "Product Actions", "Collaborators", "Integrations Used"]
+CLUSTER_K_VALUES = [2, 4]
+# 5% contamination: a smaller, differently-defined set of unusual accounts,
+# not meant to reproduce the 25% quartile-based At Risk flag.
+ANOMALY_CONTAMINATION = 0.05
+RANDOM_STATE = 42
+
+PRODUCT_ACTION_FOCUS = {
+    "Jira": {
+        "monitor": "active days, issue activity, workflow automation, and integration depth",
+        "onboarding": "launch one production project, import an active backlog, and configure one workflow automation",
+        "reactivation": "restart a dormant board or backlog workflow, then offer an automation clinic if activity does not recover",
+        "value_review": "connect active teams, issue throughput, automation coverage, and integrations to delivery goals",
+    },
+    "Confluence": {
+        "monitor": "active days, page activity, contributors, and links to Jira work",
+        "onboarding": "launch one team space from a template, publish the core project documentation, and connect it to a live Jira project",
+        "reactivation": "seed a current project hub from a template, prompt contributors to update it, then offer a collaboration clinic",
+        "value_review": "connect active spaces, contributing teams, documentation coverage, and Jira linkage to knowledge-sharing goals",
+    },
+    "Trello": {
+        "monitor": "active days, board activity, collaborators, Power-Ups, and Butler automation",
+        "onboarding": "launch one live board, import the team's workflow, assign owners, and configure one Butler automation",
+        "reactivation": "revive a current team board from a relevant template, then offer a Butler automation setup session",
+        "value_review": "connect active boards, cross-team participation, Power-Up coverage, and Butler automation to workflow goals",
+    },
+    "Bitbucket": {
+        "monitor": "active days, repository activity, pull requests, Pipelines, and Jira integration",
+        "onboarding": "connect one production repository, complete the first pull request, enable Pipelines, and link Jira work items",
+        "reactivation": "restart a dormant repository workflow with a pull-request and Pipelines setup clinic tied to Jira",
+        "value_review": "connect active repositories, pull-request throughput, Pipelines adoption, and Jira integration to engineering goals",
+    },
+    "Loom": {
+        "monitor": "active days, recording activity, viewers, shares, and Jira or Confluence embeds",
+        "onboarding": "record and share the first async update, confirm viewer engagement, and embed it in Jira or Confluence",
+        "reactivation": "restart one recurring async update or walkthrough and prompt sharing through Jira or Confluence",
+        "value_review": "connect active creators, viewer reach, shared recordings, and embedded workflows to communication goals",
+    },
 }
+
+
+def recommended_action(category: str, product: str) -> str:
+    """Return an action whose intensity comes from risk and focus from product.
+
+    These are recommended workflow checks, not detected feature-level gaps: the
+    supplied usage file identifies a primary product but does not contain event
+    telemetry for individual features.
+    """
+    if product not in PRODUCT_ACTION_FOCUS:
+        raise ValueError(f"Unknown product: {product}")
+
+    focus = PRODUCT_ACTION_FOCUS[product]
+    if category == "Monitor Only":
+        return f"{product} monitoring: no outreach; track {focus['monitor']}."
+    if category == "New & Struggling":
+        return (
+            f"Milestone-tracked onboarding review for {product}: {focus['onboarding']}; "
+            "review progress against 30/60/90-day milestones with a named CSM owner."
+        )
+    if category == "Established & Low Engagement":
+        return (
+            f"Automated {product} reactivation play: {focus['reactivation']}; start with an "
+            "in-product prompt and escalate to training only if usage does not recover."
+        )
+    if category == "High-Value Disengaged":
+        return (
+            f"Executive Business Review for {product}: {focus['value_review']}; agree an "
+            "owner, recovery milestones, and a follow-up date with account leadership."
+        )
+    raise ValueError(f"Unknown risk category: {category}")
 
 
 def load_raw() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -107,12 +175,62 @@ def ticket_count_per_customer(tickets: pd.DataFrame) -> pd.DataFrame:
     return tickets.groupby("Customer ID").size().rename("Ticket Count").reset_index()
 
 
+def metric_reliability(usage: pd.DataFrame, metrics: list[str] | None = None) -> dict[str, float]:
+    """How much of each metric is a stable customer trait rather than
+    month-to-month noise, for the 5-month average the model actually uses.
+
+    Single-month ICC is between-customer variance over total variance. The
+    model averages 5 months, which suppresses the noise term by n, so the
+    reliability that applies here is the Spearman-Brown adjusted figure.
+    On this dataset that ranges from 0.63 (Collaborators) to 0.98 (Sessions):
+    see docs/findings-reliability.md.
+
+    Computed from the data at runtime so the composite weights below are
+    measured rather than hand-picked.
+    """
+    metrics = metrics or USAGE_METRICS
+    n_months = usage.groupby("Customer ID")["Month"].nunique().median()
+
+    reliabilities = {}
+    for metric in metrics:
+        per_customer = usage.groupby("Customer ID")[metric]
+        between = per_customer.mean().var()
+        within = per_customer.var().mean()
+        reliabilities[metric] = between / (between + within / n_months)
+    return reliabilities
+
+
+def weighted_composite(df: pd.DataFrame, weights: dict[str, float]) -> pd.Series:
+    """Standardise each metric, then combine on the given weights.
+
+    Standardising first matters: the previous version multiplied raw values,
+    so a metric's real influence depended on its raw scale rather than on its
+    stated weight (Collaborators' nominal 1:2 weighting worked out to an
+    effective 38:62 split purely because of scale).
+    """
+    total = sum(weights.values())
+    z_scores = [((df[m] - df[m].mean()) / df[m].std()) * (w / total) for m, w in weights.items()]
+    return pd.concat(z_scores, axis=1).sum(axis=1)
+
+
 def customer_usage_summary(usage: pd.DataFrame) -> pd.DataFrame:
     """Average usage metrics per customer across their 5-month history, plus
-    their primary product (the one with the most total active days -- for
-    the 98.6% of customers with only one product this is just that product)."""
-    metrics = ENGAGEMENT_METRICS + list(EMBEDDEDNESS_WEIGHTS)
-    avg = usage.groupby("Customer ID")[metrics].mean().reset_index()
+    their active days trajectory slope and primary product (the one with the
+    most total active days -- for the 98.6% of customers with only one product
+    this is just that product)."""
+    avg = usage.groupby("Customer ID")[USAGE_METRICS].mean().reset_index()
+
+    # Calculate month-over-month trajectory slope for each customer
+    monthly_days = usage.groupby(["Customer ID", "Month"])["Active Days"].sum().reset_index()
+
+    def calc_slope(group: pd.DataFrame) -> float:
+        y = group["Active Days"].values.astype(float)
+        x = np.arange(len(y))
+        return float(np.polyfit(x, y, 1)[0]) if len(y) >= 2 else 0.0
+
+    slopes = monthly_days.groupby("Customer ID").apply(calc_slope, include_groups=False).reset_index()
+    slopes.columns = ["Customer ID", "Active Days Slope"]
+    avg = avg.merge(slopes, on="Customer ID", how="left")
 
     totals = usage.groupby(["Customer ID", "Product"])["Active Days"].sum().reset_index()
     primary = totals.loc[totals.groupby("Customer ID")["Active Days"].idxmax(), ["Customer ID", "Product"]]
@@ -125,7 +243,126 @@ def percentile_within_group(df: pd.DataFrame, value_col: str, group_cols: list[s
     return df.groupby(group_cols)[value_col].rank(pct=True) * 100
 
 
-def build_customer_risk(customers: pd.DataFrame, usage_summary: pd.DataFrame, ticket_counts: pd.DataFrame) -> pd.DataFrame:
+def label_usage_clusters(centroids: pd.DataFrame) -> dict[int, str]:
+    """Name each cluster from its own centroid, not a hardcoded index --
+    KMeans cluster numbering isn't a meaningful order on its own. Splits on
+    two axes: usage volume (Active Days/Sessions/Product Actions) and
+    integration depth (Collaborators/Integrations Used), each ranked across
+    the k centroids, then quadrant-labeled. Written for any even k."""
+    volume = centroids[ENGAGEMENT_METRICS].mean(axis=1)
+    # Unweighted on purpose: a centroid averages over a whole cluster, where
+    # the per-customer noise that reliability weighting corrects for has
+    # already averaged out.
+    depth = centroids[EMBEDDEDNESS_METRICS].mean(axis=1)
+    volume_rank = volume.rank(method="first").astype(int) - 1
+    depth_rank = depth.rank(method="first").astype(int) - 1
+    half = len(centroids) / 2
+
+    labels = {}
+    for cluster_id in centroids.index:
+        high_volume = volume_rank[cluster_id] >= half
+        high_depth = depth_rank[cluster_id] >= half
+        if high_volume and high_depth:
+            labels[cluster_id] = "Power users"
+        elif high_volume and not high_depth:
+            labels[cluster_id] = "Active, shallow integration"
+        elif not high_volume and high_depth:
+            labels[cluster_id] = "Integration-heavy, moderate usage"
+        else:
+            labels[cluster_id] = "Low engagement"
+    return labels
+
+
+def standardise_within_product(df: pd.DataFrame) -> np.ndarray:
+    """Standardise each usage metric within its own Primary Product group,
+    instead of across the whole population.
+
+    Products have genuinely different baseline usage (Jira ~10.0 avg active
+    days vs. Loom ~6.7), so standardising globally means a typical Loom
+    customer looks lower on every metric than a typical Jira customer purely
+    because of which product they use, not because they're less engaged.
+    Verified: under global standardisation, Loom was 26.7% of the
+    lowest-usage cluster against its 19.2% base rate; standardising within
+    product instead brings every product's share within a point of its base
+    rate, at no cost to silhouette (0.304 vs 0.302 at k=4). The Plan Type
+    corroboration (KMeans rediscovering plan-tier bands unprompted) is
+    unaffected, since Plan Type varies independently of Primary Product.
+    """
+    features = df[CLUSTER_METRICS].fillna(df[CLUSTER_METRICS].median())
+
+    def z_within_group(group: pd.Series) -> pd.Series:
+        std = group.std() or 1  # guard a zero-variance metric in a tiny group
+        return (group - group.mean()) / std
+
+    standardised = features.groupby(df["Primary Product"], observed=True).transform(z_within_group)
+    return standardised.values
+
+
+def add_usage_clusters(df: pd.DataFrame) -> pd.DataFrame:
+    """KMeans on usage metrics standardised within Primary Product -- see
+    standardise_within_product for why not globally. Discovers segments from
+    the data itself, instead of the hand-picked Plan Type x Product grouping
+    used for the Risk Score. Computes every k in CLUSTER_K_VALUES (k=2 and
+    k=4 by default): k=2 is the cleaner separation, k=4 is more actionable
+    nuance with more overlap. Neither is hidden in favour of the other --
+    see docs/findings-ml-segments.md."""
+    df = df.copy()
+    X = standardise_within_product(df)
+
+    for k in CLUSTER_K_VALUES:
+        km = KMeans(n_clusters=k, random_state=RANDOM_STATE, n_init=10).fit(X)
+        id_col = f"Usage Cluster ID (k={k})"
+        label_col = f"Usage Cluster (k={k})"
+        df[id_col] = km.labels_
+
+        centroids = df.groupby(id_col)[CLUSTER_METRICS].mean()
+        labels = label_usage_clusters(centroids)
+        df[label_col] = df[id_col].map(labels)
+
+    # Default/headline columns -- k=4, kept under the plain name for
+    # anything that doesn't care which k it's looking at (e.g. the
+    # risk-scorer tool's single-customer summary line).
+    df["Usage Cluster ID"] = df["Usage Cluster ID (k=4)"]
+    df["Usage Cluster"] = df["Usage Cluster (k=4)"]
+    return df
+
+
+def add_usage_anomalies(df: pd.DataFrame) -> pd.DataFrame:
+    """Isolation Forest on usage metrics standardised within Primary Product
+    (see standardise_within_product) -- flags accounts with an unusual
+    overall usage SHAPE (e.g. high sessions but low product actions), a
+    different concept from the quartile-based At Risk flag, which only looks
+    at overall engagement level within a peer group. See
+    docs/findings-ml-segments.md for how much the two flags overlap.
+
+    Standardising within product matters here too: under global
+    standardisation Jira was 26.9% of flagged anomalies against its 21.1%
+    base rate, purely from Jira's higher baseline usage looking unusual
+    against the whole population. Within-product standardisation brings that
+    back near base rates."""
+    df = df.copy()
+    X = standardise_within_product(df)
+
+    iso = IsolationForest(contamination=ANOMALY_CONTAMINATION, random_state=RANDOM_STATE).fit(X)
+    df["Usage Anomaly"] = iso.predict(X) == -1
+    df["Usage Anomaly Score"] = -iso.score_samples(X)  # higher = more unusual
+
+    # Anomaly driver attribution: which metric deviated most from the product peer mean?
+    features = df[CLUSTER_METRICS]
+    z = features.groupby(df["Primary Product"]).transform(lambda s: (s - s.mean()) / (s.std() or 1))
+    top_col = z.abs().idxmax(axis=1)
+    direction = np.where(z.values[np.arange(len(z)), [CLUSTER_METRICS.index(c) for c in top_col]] > 0, "High", "Low")
+    reason = direction + " " + top_col
+    df["Anomaly Driver"] = np.where(df["Usage Anomaly"], reason, "Normal usage")
+    return df
+
+
+def build_customer_risk(
+    customers: pd.DataFrame,
+    usage_summary: pd.DataFrame,
+    ticket_counts: pd.DataFrame,
+    reliabilities: dict[str, float],
+) -> pd.DataFrame:
     df = customers.merge(usage_summary, on="Customer ID", how="left")
     df = df.merge(ticket_counts, on="Customer ID", how="left")
     df["Ticket Count"] = df["Ticket Count"].fillna(0)
@@ -136,12 +373,13 @@ def build_customer_risk(customers: pd.DataFrame, usage_summary: pd.DataFrame, ti
     # Folding embeddedness into the same score would let a well-integrated
     # but declining account cancel out its own risk, which contradicts the
     # decision that embeddedness should RAISE urgency, not hide disengagement.
-    def normalise(col: pd.Series) -> pd.Series:
-        filled = col.fillna(col.median())
-        span = filled.max() - filled.min()
-        return (filled - filled.min()) / span if span else filled * 0
-
-    df["Engagement Composite"] = pd.concat([normalise(df[m]) for m in ENGAGEMENT_METRICS], axis=1).mean(axis=1)
+    #
+    # Both composites weight each metric by its measured reliability rather
+    # than by hand. For engagement this changes almost nothing (all three
+    # metrics sit between 0.92 and 0.98), but it means no weight in the model
+    # is an unexplained choice.
+    engagement_weights = {m: reliabilities[m] for m in ENGAGEMENT_METRICS}
+    df["Engagement Composite"] = weighted_composite(df, engagement_weights)
 
     # At Risk / disengagement severity: percentile within the customer's own
     # Plan Type x Primary Product peer group -- both are confirmed real,
@@ -152,10 +390,19 @@ def build_customer_risk(customers: pd.DataFrame, usage_summary: pd.DataFrame, ti
     df["At Risk"] = df["Engagement Percentile"] <= 25
     disengagement_severity = 100 - df["Engagement Percentile"]
 
-    # Embeddedness: weighted combination of Collaborators + Integrations Used,
-    # expressed as a percentile so it combines cleanly with the tier weight.
-    weighted_embeddedness = sum(df[m] * w for m, w in EMBEDDEDNESS_WEIGHTS.items())
-    df["Embeddedness Percentile"] = weighted_embeddedness.rank(pct=True) * 100
+    # Embeddedness: Collaborators + Integrations Used, each standardised and
+    # then weighted by its measured reliability, expressed as a percentile so
+    # it combines cleanly with the tier weight.
+    #
+    # Note for anyone reading this expecting the noisy metric to have been
+    # dropped: it wasn't, and reliability weighting does not reduce its
+    # influence. Collaborators is the least reliable input (0.63 against 0.89
+    # for Integrations Used), but weighting by reliability gives it 41% of the
+    # embeddedness score, slightly MORE than the 38% it effectively had under
+    # the old raw-value scheme. The gain here is that the split is now measured
+    # and stated rather than an accident of raw scale.
+    embeddedness_weights = {m: reliabilities[m] for m in EMBEDDEDNESS_METRICS}
+    df["Embeddedness Percentile"] = weighted_composite(df, embeddedness_weights).rank(pct=True) * 100
 
     # Risk Score: disengagement severity scaled up by an urgency multiplier
     # from account value (plan tier) and embeddedness -- both confirmed to
@@ -182,10 +429,16 @@ def build_customer_risk(customers: pd.DataFrame, usage_summary: pd.DataFrame, ti
             return "New & Struggling"
         if high_value.loc[row.name]:
             return "High-Value Disengaged"
-        return "Established & Declining"
+        return "Established & Low Engagement"
 
     df["Risk Category"] = df.apply(categorise, axis=1)
-    df["Recommended Action"] = df["Risk Category"].map(PLAYBOOK_ACTIONS)
+    df["Recommended Action"] = [
+        recommended_action(category, product)
+        for category, product in zip(df["Risk Category"], df["Primary Product"])
+    ]
+
+    df = add_usage_clusters(df)
+    df = add_usage_anomalies(df)
 
     return df
 
@@ -199,17 +452,30 @@ def main() -> None:
 
     usage_summary = customer_usage_summary(usage)
     ticket_counts = ticket_count_per_customer(tickets)
-    risk = build_customer_risk(customers, usage_summary, ticket_counts)
+    reliabilities = metric_reliability(usage)
+    risk = build_customer_risk(customers, usage_summary, ticket_counts, reliabilities)
     risk.to_csv(OUT_CUSTOMER_RISK, index=False)
 
     print(f"Tickets (descriptive only): {len(tickets)} rows -> {OUT_TICKETS}")
     print(f"Customer risk: {len(risk)} rows -> {OUT_CUSTOMER_RISK}")
+    print()
+    print("Composite weights, from measured reliability of the 5-month average:")
+    for metric, reliability in reliabilities.items():
+        print(f"  {metric:20s} {reliability:.3f}")
     print()
     print("Active Days by Plan Type:")
     print(risk.groupby("Plan Type")["Active Days"].mean().sort_values())
     print()
     print("Risk Category counts:")
     print(risk["Risk Category"].value_counts())
+    print()
+    print("Usage Cluster counts:")
+    print(risk["Usage Cluster"].value_counts())
+    print()
+    n_anomaly = risk["Usage Anomaly"].sum()
+    overlap = risk.loc[risk["Usage Anomaly"], "At Risk"].mean()
+    print(f"Usage anomalies: {n_anomaly} / {len(risk)} ({n_anomaly / len(risk):.1%})")
+    print(f"Of those, already flagged At Risk by the quartile method: {overlap:.1%}")
 
 
 if __name__ == "__main__":

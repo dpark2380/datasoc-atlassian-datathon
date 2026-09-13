@@ -39,7 +39,7 @@ def check(csv_path: Path, outcome: str) -> None:
     for col in categorical_cols:
         group_means = df.groupby(col)[outcome].mean()
         spread = group_means.max() - group_means.min()
-        flag = "  <-- near-zero spread, likely no real relationship" if spread < 0.15 * df[outcome].std() else ""
+        flag = " (near-zero spread, likely no real relationship)" if spread < 0.15 * df[outcome].std() else ""
         print(f"{col}: group-mean spread = {spread:.3f}{flag}")
 
 

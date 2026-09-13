@@ -7,3 +7,6 @@ __pycache__/
 *.pyc
 analysis/cleaned_tickets.csv
 analysis/customer_risk.csv
+.claude/
+.agents/
+analysis/.pipeline_stamp
