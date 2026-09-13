@@ -194,17 +194,104 @@ with tab_solution:
         "to a specific, evidence-based action instead of a one-size-fits-all response.",
         icon=":material/lightbulb:",
     )
-    st.markdown(
-        "Three outputs come out of one pipeline, computed monthly from usage data alone, never from the "
-        "support ticket file, which failed its own data-quality audit (see the EDA and Data reliability "
-        "tabs):\n\n"
-        "1. **A Risk Score and Risk Category** for every customer, comparing them only to peers on the "
-        "same Plan Type and Primary Product.\n"
-        "2. **A product-specific recommended action** for each category, drawn from named Customer "
-        "Success playbooks (Gainsight, ChurnZero) rather than invented advice.\n"
-        "3. **A live lookup tool** (the Risk Scorer page) where any customer's score, peer comparison, "
-        "and recommended action are visible on one screen."
+    st.caption(
+        "Computed monthly from usage data alone, never from the support ticket file, which failed its own "
+        "data-quality audit (see the EDA and Data reliability tabs)."
     )
+
+    st.divider()
+    st.subheader("The pipeline: how the six components fit together")
+    st.caption(
+        "One backbone (data → composites → rule → score), corroborated by two diagnostic checks and one "
+        "forecaster that don't decide anything on their own, converging on three outputs."
+    )
+
+    b1, a1, b2, a2, b3, a3, b4 = st.columns([3, 0.5, 3, 0.5, 3, 0.5, 3])
+    with b1:
+        with st.container(border=True):
+            st.markdown("**Usage data**")
+            st.caption("product_usage.csv, 5 months")
+    with a1:
+        st.markdown("<div style='text-align:center;padding-top:30px;font-size:24px'>→</div>", unsafe_allow_html=True)
+    with b2:
+        with st.container(border=True):
+            st.markdown("**Reliability-weighted composites**")
+            st.caption("Standardised, weighted by measured reliability")
+    with a2:
+        st.markdown("<div style='text-align:center;padding-top:30px;font-size:24px'>→</div>", unsafe_allow_html=True)
+    with b3:
+        with st.container(border=True):
+            st.markdown("**Peer-relative rule**")
+            st.caption("Bottom 25% within Plan x Product peer group")
+    with a3:
+        st.markdown("<div style='text-align:center;padding-top:30px;font-size:24px'>→</div>", unsafe_allow_html=True)
+    with b4:
+        with st.container(border=True):
+            st.markdown("**Risk Score & Risk Category**")
+            st.caption("Output 1")
+
+    st.markdown(
+        "<div style='text-align:center;color:#5E6C84;font-size:15px;margin-top:8px'>"
+        "↑ corroborated by, and given an early warning from ↑</div>",
+        unsafe_allow_html=True,
+    )
+    d1, d2, d3 = st.columns(3)
+    with d1:
+        with st.container(border=True):
+            st.markdown("**KMeans clustering**")
+            st.caption("Independent corroboration of the categories")
+    with d2:
+        with st.container(border=True):
+            st.markdown("**Isolation Forest**")
+            st.caption("Flags unusual shape, not level, a separate watch-list")
+    with d3:
+        with st.container(border=True):
+            st.markdown("**Month-5 forecaster**")
+            st.caption("Supervised early warning, 0.921 held-out AUC")
+
+    st.markdown(
+        "<div style='text-align:center;font-size:24px;margin-top:8px'>↓</div>", unsafe_allow_html=True
+    )
+    o1, o2 = st.columns(2)
+    with o1:
+        with st.container(border=True):
+            st.markdown("**Product-specific recommended action**")
+            st.caption("Output 2, category + Primary Product")
+    with o2:
+        with st.container(border=True):
+            st.markdown("**Live Risk Scorer tool**")
+            st.caption("Output 3, score + category + action + forecast, one screen")
+
+    st.divider()
+    st.subheader("The three outputs")
+    out1, out2, out3 = st.columns(3, border=True)
+    with out1:
+        st.markdown("#### 1. Risk Score & Risk Category")
+        st.markdown(
+            "Every customer scored 0-100 and placed in one of four categories, comparing them only to "
+            "peers on the same Plan Type and Primary Product."
+        )
+        st.caption("Built from: the peer-relative rule, on reliability-weighted composites.")
+        st.caption(
+            "Why: the decision layer has to be explainable to a human without translation, so it's a rule, "
+            "not a trained model."
+        )
+    with out2:
+        st.markdown("#### 2. Recommended Action")
+        st.markdown(
+            "A specific, sourced next step for each at-risk customer: category sets the intensity, "
+            "Primary Product sets the workflow."
+        )
+        st.caption("Built from: product-specific actions, applied to the Risk Category above.")
+        st.caption("Why: a generic check-in email is not a solution; a named CS playbook is.")
+    with out3:
+        st.markdown("#### 3. Live Risk Scorer")
+        st.markdown(
+            "One screen per customer: score, peer comparison, category, recommended action, and (where "
+            "available) the forecast probability."
+        )
+        st.caption("Built from: all six components, surfaced together.")
+        st.caption("Why: the analysis only matters if someone can act on it in real time.")
 
     st.divider()
     st.subheader("The components, why each exists, and how it works")
