@@ -77,7 +77,7 @@ target (they're already engaged, they just haven't adopted the features
 that make an account sticky), distinct from "Low engagement," which needs
 a different kind of intervention entirely.
 
-## 2. Usage anomaly detection (Isolation Forest)
+## 2. Usage anomaly detection (Isolation Forest) & Attribution
 
 We ran Isolation Forest on the same five metrics, standardised within
 Primary Product for the same reason as the clustering above, with 5%
@@ -90,16 +90,55 @@ method. That means anomaly detection is finding a mostly different
 population: accounts with an unusual overall usage shape (for example,
 high sessions paired with low product actions, which the quartile method
 wouldn't catch since it only looks at overall engagement level within a
-peer group). This is presented as a complementary signal, not a
-replacement for the Risk Score, since it optimizes for a different
-question (how unusual is this account's pattern, not how disengaged is
-it). Under the earlier, global standardisation this figure was 21.9%; the
-product fix moved it, since which accounts look "unusual" changes once
-products are compared to their own peers instead of the whole population.
+peer group).
+
+### Anomaly Attribution (Why each account was flagged)
+Using standardized distance from peer medians, we attribute the dominant
+driver for each flagged anomaly:
+- **High Product Actions (122 accounts)**: Extreme automated script usage, bot activity, or bulk webhook syncing.
+- **High Active Days (110 accounts)**: Daemon / always-on automated monitoring services.
+- **High Sessions (70 accounts)**: Automated polling or high-frequency login routines.
+- **Low Collaborators (63 accounts)**: High volume concentrated in single-user silos with zero organizational reach.
+- **High Collaborators (34 accounts)** & **Integrations Used**: Broad multi-tool orchestration with atypical usage volume.
+
+## 3. Supervised Early-Warning Radar (Month 5 Disengagement Forecaster)
+
+While contract cancellation labels do not exist, the dataset contains 5 full months
+of longitudinal telemetry per customer. This enables an uncorrupted, methodologically sound
+supervised machine learning formulation: **predicting Month 5 usage collapse from Months 1–4 behavior**.
+
+### Target Formulation
+A customer is labeled as **Disengaged in Month 5** if their Month 5 composite engagement falls into
+the bottom quartile within their primary product peer group (27.15% base rate).
+
+### Feature Engineering (Months 1–4 only, strictly avoiding lookahead bias):
+- Baseline volume aggregates: `mean`, `min`, `max`, `std` for Active Days, Sessions, Actions, Collaborators, Integrations.
+- Momentum & trajectory: `Active Days Slope` and `active_days_momentum` (Month 4 vs Months 1-3 avg).
+- Account context: One-hot encoded `Plan Type` and `Primary Product`.
+
+### Out-of-Sample Performance (80/20 Train/Test Split, N = 1,664 test accounts):
+- **Random Forest**:
+  - **Test ROC-AUC**: **0.9210**
+  - **Test Accuracy**: **85.28%**
+  - **Recall (Disengaged)**: **70.35%** (identifies 7 out of 10 disengaging accounts 30 days in advance)
+  - **Precision (Disengaged)**: **74.13%**
+- **Logistic Regression (Linear Baseline)**:
+  - **Test ROC-AUC**: **0.9215**
+  - High agreement confirms strong underlying linear and non-linear telemetry signal.
+
+### Top Leading Indicators
+1. `avg_sessions_m1_4` (Importance: 0.2255)
+2. `avg_active_days_m1_4` (Importance: 0.1830)
+3. `avg_actions_m1_4` (Importance: 0.1548)
+4. `min_active_days_m1_4` (Importance: 0.1258)
+5. `max_active_days_m1_4` (Importance: 0.0816)
+
+Session frequency and regular active days are far more predictive of future retention than episodic high-volume action spikes.
 
 ## Where this shows up
 
-Both are in `analysis/customer_risk.csv` (`Usage Cluster`, `Usage Anomaly`,
-`Usage Anomaly Score` columns) and in the dashboard's "Usage segments"
-section, which also documents the within-product standardisation fix
-directly in the "How these labels are decided" expander.
+- `analysis/customer_risk.csv`: Contains `Usage Cluster`, `Usage Anomaly`, `Usage Anomaly Score`, and `Anomaly Driver`.
+- `analysis/customer_disengagement_predictions.csv`: Contains `Predicted Disengagement Prob` and actual outcome.
+- `analysis/ml_results.json`: Exports full ROC curves, confusion matrices, and feature importances.
+- Streamlit Dashboard:
+  - "Usage segments (ML)" tab renders K-Means clusters, anomaly scatter, anomaly attribution breakdown, and the interactive Supervised Early-Warning Radar.

@@ -32,26 +32,22 @@ except ImportError:
 
 @st.cache_resource
 def ensure_pipeline_output() -> None:
-    """Regenerate the pipeline output whenever eda.py has changed since it was
-    last generated.
-
-    Keying on the hash of eda.py rather than on a specific column name catches
-    changes to the *values* as well as the schema. A previous version of this
-    check looked for a column in the header, which missed a rename of the risk
-    category labels: the schema was unchanged, so a stale file produced by an
-    older pipeline was kept and the app then crashed looking up a label that
-    no longer existed in it.
-    """
     risk_csv = ROOT / "analysis" / "customer_risk.csv"
     stamp_file = ROOT / "analysis" / ".pipeline_stamp"
     current = hashlib.sha256(Path(eda.__file__).read_bytes()).hexdigest()
 
     previous = stamp_file.read_text(encoding="utf-8").strip() if stamp_file.exists() else None
-    if risk_csv.exists() and previous == current:
-        return
+    if not risk_csv.exists() or previous != current:
+        eda.main()
+        stamp_file.write_text(current, encoding="utf-8")
 
-    eda.main()
-    stamp_file.write_text(current, encoding="utf-8")
+    ml_json = ROOT / "analysis" / "ml_results.json"
+    if not ml_json.exists():
+        try:
+            from analysis import predict_disengagement  # noqa: E402
+        except ImportError:
+            import predict_disengagement  # noqa: E402
+        predict_disengagement.main()
 
 
 st.set_page_config(page_title="Customer Risk & Playbook", layout="wide")

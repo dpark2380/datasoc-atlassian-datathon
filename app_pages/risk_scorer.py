@@ -16,6 +16,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 RISK_CSV = Path(__file__).parent.parent / "analysis" / "customer_risk.csv"
+PRED_CSV = Path(__file__).parent.parent / "analysis" / "customer_disengagement_predictions.csv"
 
 CATEGORY_COLOR = {
     "Monitor Only": "#6b7280",
@@ -29,6 +30,9 @@ PEER_METRICS = ["Active Days", "Sessions", "Product Actions", "Collaborators", "
 @st.cache_data
 def load_data() -> pd.DataFrame:
     df = pd.read_csv(RISK_CSV)
+    if PRED_CSV.exists():
+        preds = pd.read_csv(PRED_CSV)
+        df = df.merge(preds[["Customer ID", "Predicted Disengagement Prob"]], on="Customer ID", how="left")
     return df
 
 
@@ -67,7 +71,8 @@ with st.sidebar:
 row = risk[risk["Customer ID"] == customer_id].iloc[0]
 
 # --- Header: who this is and the headline verdict --------------------------
-col1, col2, col3 = st.columns([2, 1, 1])
+# --- Header: who this is and the headline verdict --------------------------
+col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
 with col1:
     st.subheader(f"Customer {row['Customer ID']}")
     st.caption(
@@ -77,6 +82,11 @@ with col1:
 with col2:
     st.metric("Risk score", f"{row['Risk Score']:.0f} / 100")
 with col3:
+    if "Predicted Disengagement Prob" in row and pd.notna(row["Predicted Disengagement Prob"]):
+        st.metric("30-Day Risk Forecast", f"{row['Predicted Disengagement Prob']:.0%}")
+    else:
+        st.metric("Status", "At Risk" if row["At Risk"] else "Healthy")
+with col4:
     color = CATEGORY_COLOR.get(row["Risk Category"], "#6b7280")
     st.markdown(
         f"<div style='background:{color};color:white;padding:0.6rem;border-radius:0.4rem;"
@@ -105,12 +115,16 @@ fig.add_trace(go.Bar(
 fig.update_layout(barmode="group", legend=dict(orientation="h", y=1.15), template="plotly_white")
 st.plotly_chart(fig, width="stretch", key="scorer_peer_chart")
 
+anomaly_desc = ""
+if row["Usage Anomaly"]:
+    driver = row.get("Anomaly Driver", "Unusual usage shape")
+    anomaly_desc = f" Flagged as a usage anomaly (Driver: {driver})."
+
 st.caption(
     f"Engagement percentile within peer group: {row['Engagement Percentile']:.0f} "
     f"(bottom 25% = At Risk). Embeddedness percentile: {row['Embeddedness Percentile']:.0f}. "
     f"Tenure: {'recently acquired' if row['Recently Acquired (relative)'] else 'established'} relative to our customer base. "
-    f"Usage segment: {row['Usage Cluster']}."
-    + (" Flagged as a usage anomaly, meaning the shape of their usage is unusual, which is a different signal from low volume." if row["Usage Anomaly"] else "")
+    f"Usage segment: {row['Usage Cluster']}.{anomaly_desc}"
 )
 
 st.divider()

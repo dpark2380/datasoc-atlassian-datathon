@@ -172,9 +172,22 @@ def weighted_composite(df: pd.DataFrame, weights: dict[str, float]) -> pd.Series
 
 def customer_usage_summary(usage: pd.DataFrame) -> pd.DataFrame:
     """Average usage metrics per customer across their 5-month history, plus
-    their primary product (the one with the most total active days -- for
-    the 98.6% of customers with only one product this is just that product)."""
+    their active days trajectory slope and primary product (the one with the
+    most total active days -- for the 98.6% of customers with only one product
+    this is just that product)."""
     avg = usage.groupby("Customer ID")[USAGE_METRICS].mean().reset_index()
+
+    # Calculate month-over-month trajectory slope for each customer
+    monthly_days = usage.groupby(["Customer ID", "Month"])["Active Days"].sum().reset_index()
+
+    def calc_slope(group: pd.DataFrame) -> float:
+        y = group["Active Days"].values.astype(float)
+        x = np.arange(len(y))
+        return float(np.polyfit(x, y, 1)[0]) if len(y) >= 2 else 0.0
+
+    slopes = monthly_days.groupby("Customer ID").apply(calc_slope, include_groups=False).reset_index()
+    slopes.columns = ["Customer ID", "Active Days Slope"]
+    avg = avg.merge(slopes, on="Customer ID", how="left")
 
     totals = usage.groupby(["Customer ID", "Product"])["Active Days"].sum().reset_index()
     primary = totals.loc[totals.groupby("Customer ID")["Active Days"].idxmax(), ["Customer ID", "Product"]]
@@ -290,6 +303,14 @@ def add_usage_anomalies(df: pd.DataFrame) -> pd.DataFrame:
     iso = IsolationForest(contamination=ANOMALY_CONTAMINATION, random_state=RANDOM_STATE).fit(X)
     df["Usage Anomaly"] = iso.predict(X) == -1
     df["Usage Anomaly Score"] = -iso.score_samples(X)  # higher = more unusual
+
+    # Anomaly driver attribution: which metric deviated most from the product peer mean?
+    features = df[CLUSTER_METRICS]
+    z = features.groupby(df["Primary Product"]).transform(lambda s: (s - s.mean()) / (s.std() or 1))
+    top_col = z.abs().idxmax(axis=1)
+    direction = np.where(z.values[np.arange(len(z)), [CLUSTER_METRICS.index(c) for c in top_col]] > 0, "High", "Low")
+    reason = direction + " " + top_col
+    df["Anomaly Driver"] = np.where(df["Usage Anomaly"], reason, "Normal usage")
     return df
 
 
