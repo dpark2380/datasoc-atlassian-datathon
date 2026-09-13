@@ -492,6 +492,26 @@ with tab_risk:
         "Established & Low Engagement": "reactivation",
         "High-Value Disengaged": "value_review",
     }
+
+    st.markdown("**Deck version: one illustrative row**")
+    st.caption(
+        "The full 4x5 grid is real but too dense for a slide, and only the category axis (the row) is "
+        "backed by a named vendor process; the product-specific wording (the columns) is our own reasoning "
+        "about how each tool is normally used, not a sourced claim. One row makes both points without "
+        "implying the whole grid carries equal evidence."
+    )
+    illustrative_category = st.selectbox(
+        "Category to illustrate", options=CATEGORY_ORDER, index=CATEGORY_ORDER.index("New & Struggling"),
+    )
+    one_row = pd.DataFrame(
+        [{
+            "Product": product,
+            "Recommended focus": eda.PRODUCT_ACTION_FOCUS[product][focus_key_by_category[illustrative_category]].capitalize(),
+        } for product in eda.PRODUCT_ACTION_FOCUS]
+    )
+    st.dataframe(one_row, width="stretch", hide_index=True)
+
+    st.markdown("**Full grid: every category x product combination**")
     action_pivot = pd.DataFrame(
         {
             product: {
