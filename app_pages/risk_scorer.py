@@ -87,7 +87,12 @@ with col3:
 st.divider()
 
 # --- Why: this customer vs their real peer group ----------------------------
-st.subheader("Why this customer is flagged")
+st.subheader("Peer comparison")
+st.caption(
+    "What this chart shows: this customer's five usage metrics against the median for customers on the "
+    "same Plan Type and Primary Product, i.e. their actual peer group, not the whole customer base. This "
+    "is the reasoning behind why they were flagged."
+)
 peers = risk[(risk["Plan Type"] == row["Plan Type"]) & (risk["Primary Product"] == row["Primary Product"])]
 peer_median = peers[PEER_METRICS].median()
 

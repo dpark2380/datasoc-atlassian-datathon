@@ -226,6 +226,7 @@ with tab_risk:
     st.plotly_chart(fig, width="stretch", key="dash_chart_3")
 
     st.subheader("Risk category breakdown")
+    st.caption("How many customers fall into each of the four risk categories. Full definitions below the chart.")
     counts = filtered["Risk Category"].value_counts().reindex(CATEGORY_ORDER).reset_index()
     fig = px.bar(counts, x="Risk Category", y="count")
     st.plotly_chart(fig, width="stretch", key="dash_chart_4")
@@ -268,6 +269,7 @@ with tab_risk:
     st.plotly_chart(fig, width="stretch", key="dash_chart_5")
 
     st.subheader("At-risk customers and recommended action (sample)")
+    st.caption("The top 50 at-risk customers by Risk Score, each with the specific action assigned to their category.")
     st.dataframe(
         at_risk[
             ["Customer ID", "Plan Type", "Primary Product", "Risk Category", "Risk Score",
@@ -363,11 +365,21 @@ with tab_segments:
         centroids = risk.groupby(cluster_col, observed=True)[["Usage Volume", "Integration Depth"]].mean()
         fig.add_trace(go.Scatter(
             x=centroids["Usage Volume"], y=centroids["Integration Depth"],
-            mode="markers+text", text=centroids.index, textposition="top center",
-            textfont=dict(color="red", size=14, weight="bold"),
-            marker=dict(symbol="x", size=22, color="red", line=dict(width=4, color="red")),
+            mode="markers", marker=dict(symbol="circle", size=14, color="red", line=dict(width=2, color="white")),
             name="Centroid", showlegend=False,
         ))
+        # Push each label radially outward from the data's center of mass, so
+        # it lands in blank space instead of sitting on top of the dot cloud
+        # (the cloud runs along the diagonal, so outward = into a corner).
+        data_center = filtered[["Usage Volume", "Integration Depth"]].mean()
+        for label, row in centroids.iterrows():
+            dx = row["Usage Volume"] - data_center["Usage Volume"]
+            dy = row["Integration Depth"] - data_center["Integration Depth"]
+            fig.add_annotation(
+                x=row["Usage Volume"], y=row["Integration Depth"], text=f"<b>{label}</b>",
+                showarrow=True, arrowhead=2, arrowcolor="red", ax=70 if dx >= 0 else -70,
+                ay=-70 if dy >= 0 else 70, font=dict(color="red", size=14),
+            )
         fig.update_layout(height=650)
         st.plotly_chart(fig, width="stretch", key=f"cluster_scatter_k{k}")
 
@@ -551,7 +563,7 @@ with tab_reliability:
     )
 
     st.divider()
-    st.markdown("#### Is there any trend in the 5-month panel?")
+    st.markdown("#### Trend test on the 5-month panel")
     trend = reliability["trend"]
     st.markdown(
         "The obvious question about a 5-month panel is why there is no trend analysis. We tested for one. "
