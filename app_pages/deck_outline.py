@@ -6,7 +6,7 @@ import streamlit as st
 
 st.title("Deck outline")
 st.caption(
-    "A 15-slide, 7:25 story arc modelled on last year's sample deck: title → problem → stakes → "
+    "A 16-slide, 7:55 story arc modelled on last year's sample deck: title → problem → stakes → "
     "headline finding → evidence → method → results → action → product reveal. Each slide has one "
     "job and one specified figure."
 )
@@ -197,7 +197,31 @@ SLIDES = [
         ),
     },
     {
-        "title": "10. Validation: Can We Trust the Result?",
+        "title": "10. Usage Segments and Anomaly Detection",
+        "time": "30 sec",
+        "serves": "Analysis & Insights",
+        "headline": "Unsupervised clustering and anomaly detection corroborate the risk categories, independently.",
+        "figure": (
+            "The Dashboard's k=4 usage-cluster scatter (Usage Volume vs. Integration Depth), with the four "
+            "segment counts labelled: **Low engagement (3,154)**, **Active, shallow integration (2,318)**, "
+            "**Integration-heavy, moderate usage (1,807)**, **Power users (1,041)**. Beside it, one card: "
+            "**416 of 8,320 customers (5.0%) flagged as usage anomalies**, **only 18.3% overlap with At Risk**."
+        ),
+        "points": [
+            "KMeans on the five usage metrics, standardised within each customer's Primary Product so a Loom "
+            "account isn't penalised for a lower category baseline than Jira.",
+            "k=2 is the cleanest split (silhouette 0.40) but mostly restates the plan-tier finding; k=4 "
+            "(silhouette 0.30) trades some separation to split usage volume from integration depth instead.",
+            "Isolation Forest (5% contamination) flags a mostly different population from the At Risk rule: "
+            "unusual usage shape, not just low usage level.",
+            "Both are unsupervised, since there is no churn label to train or validate a supervised model "
+            "against; each is evaluated on internal statistical properties, not prediction accuracy.",
+        ],
+        "line": "This is independent evidence, not decoration: the categories we built by hand and the segments KMeans found on its own point at the same customers.",
+        "source": "findings-ml-segments.md",
+    },
+    {
+        "title": "11. Validation: Can We Trust the Result?",
         "time": "35 sec",
         "serves": "Analysis & Insights",
         "headline": "The forecast separates next-month disengagement, and the action queue stays stable.",
@@ -217,7 +241,7 @@ SLIDES = [
         "source": "findings-reliability.md and findings-sensitivity.md",
     },
     {
-        "title": "11. Customer Scenarios: Score to Action",
+        "title": "12. Customer Scenarios: Score to Action",
         "time": "35 sec",
         "serves": "Solution & Recommendation",
         "headline": "The same low-usage signal requires different action in different contexts.",
@@ -235,7 +259,7 @@ SLIDES = [
         "line": "Segmentation matters because urgency, likely cause, and appropriate cost of response are not the same for every account.",
     },
     {
-        "title": "12. Method Selection",
+        "title": "13. Method Selection",
         "time": "30 sec",
         "serves": "Analysis & Insights",
         "headline": "Choose the method the available evidence can actually support.",
@@ -253,7 +277,7 @@ SLIDES = [
         "line": "We use prediction for an outcome we can observe and transparent rules for decisions people must explain.",
     },
     {
-        "title": "13. Strategies for Retention",
+        "title": "14. Strategies for Retention",
         "time": "35 sec",
         "serves": "Solution & Recommendation",
         "headline": "Match the retention play to the likely reason for low engagement.",
@@ -274,7 +298,7 @@ SLIDES = [
         "source": "research-cs-playbook-actions.md",
     },
     {
-        "title": "14. Strategies for Value Protection and Expansion",
+        "title": "15. Strategies for Value Protection and Expansion",
         "time": "30 sec",
         "serves": "Solution & Recommendation",
         "headline": "Protect high-value accounts and test deeper adoption where usage is already healthy.",
@@ -293,7 +317,7 @@ SLIDES = [
         "line": "The framework protects current value first, then tests expansion where a specific adoption gap is visible.",
     },
     {
-        "title": "15. Introducing the Customer Risk Playbook",
+        "title": "16. Introducing the Customer Risk Playbook",
         "time": "20 sec",
         "serves": "Product reveal and close",
         "headline": "One account, one explanation, one next action.",
@@ -337,10 +361,9 @@ with st.expander("Backup slides, for Q&A only", expanded=False):
         "1. Full ticket data-quality audit and impossible timestamp examples.\n"
         "2. Reliability table and trend permutation distributions.\n"
         "3. Cutoff, weighting, and bootstrap sensitivity tables.\n"
-        "4. Cluster profiles and anomaly-overlap detail.\n"
-        "5. Full action-playbook evidence and ownership model.\n"
-        "6. Revenue concentration and company-specific context, only if a judge asks.\n"
-        "7. Live Risk Scorer walkthrough."
+        "4. Full action-playbook evidence and ownership model.\n"
+        "5. Revenue concentration and company-specific context, only if a judge asks.\n"
+        "6. Live Risk Scorer walkthrough."
     )
 
 with st.expander("Claims to leave out", expanded=False):

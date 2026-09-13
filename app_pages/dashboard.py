@@ -97,7 +97,16 @@ def _check_known_values(series: pd.Series, expected: list[str], column: str) -> 
 
 
 @st.cache_data
-def load_data():
+def load_data(risk_mtime: float):
+    """risk_mtime busts the cache whenever customer_risk.csv is regenerated.
+
+    Without it, this cache has no dependency on the file's contents at all
+    (st.cache_data hashes this function's own bytecode and its args, not the
+    bytes on disk it happens to read), so a long-lived deployed process that
+    already cached a DataFrame here would keep serving it even after
+    streamlit_app.py's ensure_pipeline_output() regenerates the CSV with a
+    newer analysis/eda.py -- the exact KeyError this was written to fix.
+    """
     risk = pd.read_csv(RISK_CSV)
     _check_known_values(risk["Plan Type"], PLAN_ORDER, "Plan Type")
     _check_known_values(risk["Risk Category"], CATEGORY_ORDER, "Risk Category")
@@ -151,7 +160,7 @@ def load_ml_results(mtime: float = 0):
         return json.load(f)
 
 
-risk, customers, tickets, usage = load_data()
+risk, customers, tickets, usage = load_data(RISK_CSV.stat().st_mtime)
 eda_metrics = dashboard_metrics.build_eda_metrics(customers, tickets, usage)
 
 st.title("Customer Risk & Playbook")
@@ -319,6 +328,36 @@ with tab_eda:
             "first response. The support file is descriptive volume data—not a defensible sentiment or risk "
             "signal.",
             icon=":material/warning:",
+        )
+
+        st.markdown("#### Ticket volume doesn't track usage trend either")
+        st.caption(
+            "What this chart shows: split customers into quartiles of their own Active Days trend slope "
+            "(Q1 declining fastest, Q4 growing fastest) and compare average ticket count per quartile. If "
+            "tickets tracked anything real about a customer's trajectory, a collapsing account should file "
+            "noticeably more, or fewer, tickets than a growing one."
+        )
+        trend_quartile = pd.qcut(
+            risk["Active Days Slope"], 4,
+            labels=["Q1: declining fastest", "Q2: declining", "Q3: growing", "Q4: growing fastest"],
+        )
+        by_trend_quartile = risk.groupby(trend_quartile, observed=True)["Ticket Count"].mean().reset_index()
+        by_trend_quartile.columns = ["Usage Trend Quartile", "Ticket Count"]
+        fig = px.bar(
+            by_trend_quartile, x="Usage Trend Quartile", y="Ticket Count",
+            color="Usage Trend Quartile",
+            color_discrete_sequence=["#B3D4FF", "#4C9AFF", "#2684FF", "#0052CC"],
+        )
+        fig.update_layout(showlegend=False)
+        render_plotly_chart(fig, width="stretch", key="eda_ticket_by_trend_quartile")
+        st.caption(
+            "Caveat, stated plainly: this doesn't add independent evidence beyond the trend-noise finding "
+            "in the Data reliability tab. Active Days Slope is fit on the same 5-month panel already shown "
+            "there to produce slopes indistinguishable from random reshuffles (SD ratio near 1.0), with a "
+            "negative first-half/second-half correlation (mean reversion, not a real trajectory). If the "
+            "slope itself is mostly noise, splitting customers into quartiles of it is close to a random "
+            "split, so a flat ticket count across quartiles is the expected result either way, not new proof "
+            "that tickets are disconnected from real behaviour."
         )
 
     with usage_detail:
@@ -622,6 +661,17 @@ with tab_segments:
         "k=2 has the cleanest separation (silhouette 0.40); k=4 trades some separation for more actionable "
         "nuance (silhouette 0.30) -- see how the labels are decided, below."
     )
+    # A fixed, named palette instead of the app-wide default sequence: the
+    # first two ATLASSIAN_COLORS entries (blue, light blue) sit too close in
+    # hue and lightness to tell apart at low opacity against a white
+    # background. These four are chosen for pairwise contrast and to stay
+    # legible on white: dark blue, green, purple, and red-orange.
+    CLUSTER_COLORS = {
+        "Low engagement": "#0052CC",
+        "Active, shallow integration": "#00875A",
+        "Integration-heavy, moderate usage": "#6554C0",
+        "Power users": "#DE350B",
+    }
     for k in [2, 4]:
         cluster_col = f"Usage Cluster (k={k})"
         st.markdown(f"**k={k}**")
@@ -632,7 +682,7 @@ with tab_segments:
 
         fig = px.scatter(
             filtered, x="Usage Volume", y="Integration Depth", color=cluster_col,
-            opacity=0.35, render_mode="webgl",
+            color_discrete_map=CLUSTER_COLORS, opacity=0.45, render_mode="webgl",
         )
         fig.update_traces(marker=dict(size=6))
         fig.update_layout(height=650)
@@ -735,7 +785,7 @@ with tab_segments:
     anomaly_plot["Usage Anomaly"] = anomaly_plot["Usage Anomaly"].map({True: "Anomaly", False: "Not anomaly"})
     fig = px.scatter(
         anomaly_plot.sort_values("Usage Anomaly"), x="Usage Volume", y="Integration Depth", color="Usage Anomaly",
-        color_discrete_map={"Not anomaly": "#DFE1E6", "Anomaly": "#DE350B"},
+        color_discrete_map={"Not anomaly": "#A5ADBA", "Anomaly": "#E10600"},
         opacity=0.5, render_mode="webgl",
     )
     render_plotly_chart(fig, width="stretch", key="dash_chart_7")
@@ -960,7 +1010,17 @@ with tab_reliability:
         f"A ratio of 1.0 means real slopes are indistinguishable from slopes fitted to randomly reordered "
         f"data. At {trend['sd_ratio']:.3f}, that is what we have.\n\n"
         f"The split-half check says the same thing from another angle. A real trend persists, so a customer "
-        f"trending up in the first half should still be trending up in the second. The actual correlation "
+        f"trending up in the first half should still be trending up in the second."
+    )
+    st.caption(
+        "What this is: each customer's 5 monthly values are split into two overlapping halves, months 1-3 "
+        "and months 3-5, and a slope is fit separately within each half. That gives every customer a "
+        "first-half slope and a second-half slope, and the two are correlated across all customers. A real, "
+        "consistent trend would show up as a positive correlation, since someone trending up early should "
+        "still be trending up late."
+    )
+    st.markdown(
+        f"The actual correlation "
         f"between first-half and second-half slopes is **{trend['split_half_corr']:.3f}**. It is negative, "
         f"which is mean reversion: a customer above their own average one month tends to be below it the "
         f"next. That is fluctuation around a stable level, not a trajectory. Consistent with both, "
