@@ -97,7 +97,16 @@ def _check_known_values(series: pd.Series, expected: list[str], column: str) -> 
 
 
 @st.cache_data
-def load_data():
+def load_data(risk_mtime: float):
+    """risk_mtime busts the cache whenever customer_risk.csv is regenerated.
+
+    Without it, this cache has no dependency on the file's contents at all
+    (st.cache_data hashes this function's own bytecode and its args, not the
+    bytes on disk it happens to read), so a long-lived deployed process that
+    already cached a DataFrame here would keep serving it even after
+    streamlit_app.py's ensure_pipeline_output() regenerates the CSV with a
+    newer analysis/eda.py -- the exact KeyError this was written to fix.
+    """
     risk = pd.read_csv(RISK_CSV)
     _check_known_values(risk["Plan Type"], PLAN_ORDER, "Plan Type")
     _check_known_values(risk["Risk Category"], CATEGORY_ORDER, "Risk Category")
@@ -151,7 +160,7 @@ def load_ml_results(mtime: float = 0):
         return json.load(f)
 
 
-risk, customers, tickets, usage = load_data()
+risk, customers, tickets, usage = load_data(RISK_CSV.stat().st_mtime)
 eda_metrics = dashboard_metrics.build_eda_metrics(customers, tickets, usage)
 
 st.title("Customer Risk & Playbook")

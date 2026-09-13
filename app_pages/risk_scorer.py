@@ -30,7 +30,9 @@ PEER_METRICS = ["Active Days", "Sessions", "Product Actions", "Collaborators", "
 
 
 @st.cache_data
-def load_data() -> pd.DataFrame:
+def load_data(risk_mtime: float) -> pd.DataFrame:
+    """risk_mtime busts the cache when customer_risk.csv is regenerated --
+    see the matching fix and comment in app_pages/dashboard.py's load_data."""
     df = pd.read_csv(RISK_CSV)
     if PRED_CSV.exists():
         preds = pd.read_csv(PRED_CSV)
@@ -38,7 +40,7 @@ def load_data() -> pd.DataFrame:
     return df
 
 
-risk = load_data()
+risk = load_data(RISK_CSV.stat().st_mtime)
 
 st.title("Risk Scorer")
 st.caption(
