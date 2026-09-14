@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Revenue at Risk Before vs After Interventions | Atlassian Datathon</title>
+  <style>
+    :root {
+      --navy: #091E42;
+      --blue: #0052CC;
+      --teal: #00A3BF;
+      --green: #36B37E;
+      --dark-green: #006644;
+      --amber: #FFAB00;
+      --red: #FF5630;
+      --bg-subtle: #F4F5F7;
+      --bg-white: #FFFFFF;
+      --border-subtle: #DFE1E6;
+      --text-muted: #505F79;
+      --card-shadow: 0 4px 12px rgba(9, 30, 66, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, 'Fira Sans', 'Droid Sans', sans-serif;
+    }
+
+    body {
+      background-color: #EBECF0;
+      color: var(--navy);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    /* 16:9 Presentation Slide Canvas */
+    .slide-canvas {
+      width: 1280px;
+      height: 720px;
+      background: var(--bg-white);
+      border-radius: 12px;
+      box-shadow: 0 12px 36px rgba(9, 30, 66, 0.16);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+      padding: 28px 36px;
+    }
+
+    /* Top Navigation / Breadcrumbs */
+    .slide-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--bg-subtle);
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+    }
+
+    .breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .crumb {
+      color: #7A869A;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .crumb.active {
+      color: var(--blue);
+      background: #DEEBFF;
+      padding: 4px 12px;
+      border-radius: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      font-size: 14px;
+      color: var(--blue);
+    }
+
+    /* Title Section */
+    .title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 14px;
+    }
+
+    .slide-title {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--navy);
+      line-height: 1.2;
+    }
+
+    .slide-subtitle {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .executive-callout {
+      background: #E3FCEF;
+      border: 1.5px solid var(--green);
+      border-radius: 8px;
+      padding: 8px 16px;
+      text-align: right;
+    }
+
+    .executive-callout .headline {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--dark-green);
+    }
+
+    .executive-callout .sub {
+      font-size: 12px;
+      color: var(--dark-green);
+      font-weight: 600;
+    }
+
+    /* Main Content Layout */
+    .slide-body {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 20px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* Left Column: Chart and Table */
+    .left-col {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 0;
+    }
+
+    .chart-card {
+      background: var(--bg-white);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: var(--card-shadow);
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      position: relative;
+    }
+
+    .chart-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .chart-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--navy);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 6px;
+    }
+
+    .btn {
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 4px;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-subtle);
+      color: var(--navy);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn.active {
+      background: var(--blue);
+      color: white;
+      border-color: var(--blue);
+    }
+
+    .chart-img-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .chart-img-container img {
+      max-width: 100%;
+      max-height: 290px;
+      object-fit: contain;
+      border-radius: 4px;
+    }
+
+    /* Impact Table */
+    .table-container {
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      overflow: hidden;
+      background: var(--bg-white);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      text-align: left;
+    }
+
+    th {
+      background: var(--bg-subtle);
+      color: var(--navy);
+      font-weight: 700;
+      padding: 8px 12px;
+      border-bottom: 1.5px solid var(--border-subtle);
+    }
+
+    td {
+      padding: 7px 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--navy);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .highlight-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 11px;
+    }
+
+    .pill-green {
+      background: #E3FCEF;
+      color: var(--dark-green);
+    }
+
+    /* Right Column: Definition & Strategic Levers */
+    .right-col {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 0;
+    }
+
+    .formula-card {
+      background: #FAFBFC;
+      border-left: 4px solid var(--blue);
+      border-top: 1px solid var(--border-subtle);
+      border-right: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 10px 14px;
+    }
+
+    .formula-title {
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--blue);
+      margin-bottom: 4px;
+    }
+
+    .formula-math {
+      font-family: 'SF Mono', Consolas, Monaco, monospace;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--navy);
+      background: #EBECF0;
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-bottom: 4px;
+    }
+
+    .formula-desc {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      line-height: 1.35;
+    }
+
+    /* Intervention Levers */
+    .levers-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+    }
+
+    .lever-card {
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 9px 12px;
+      background: var(--bg-white);
+      transition: transform 0.2s;
+    }
+
+    .lever-card:hover {
+      transform: translateX(4px);
+    }
+
+    .lever-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 3px;
+    }
+
+    .lever-tag {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .tag-onboarding { background: #FFEBE6; color: #BF2600; }
+    .tag-diversity { background: #E6FCFF; color: #006644; }
+    .tag-risk { background: #EAE6FF; color: #403294; }
+
+    .lever-saved {
+      font-size: 11.5px;
+      font-weight: 800;
+      color: var(--dark-green);
+    }
+
+    .lever-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--navy);
+    }
+
+    .lever-detail {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.3;
+      margin-top: 2px;
+    }
+
+    /* Slide Footer / Speaker Line */
+    .slide-footer {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11.5px;
+    }
+
+    .speaker-script {
+      color: var(--navy);
+      font-weight: 600;
+      background: #F4F5F7;
+      padding: 4px 12px;
+      border-radius: 4px;
+      flex: 1;
+      margin-right: 16px;
+    }
+
+    .speaker-script span {
+      font-weight: 800;
+      color: var(--blue);
+      text-transform: uppercase;
+      font-size: 10px;
+      margin-right: 6px;
+    }
+
+    .meta-time {
+      font-weight: 700;
+      color: #7A869A;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="slide-canvas">
+    <!-- Header / Breadcrumbs -->
+    <div class="slide-header">
+      <div class="breadcrumbs">
+        <span class="crumb">Problem</span>
+        <span style="color: #C1C7D0;">→</span>
+        <span class="crumb">Model</span>
+        <span style="color: #C1C7D0;">→</span>
+        <span class="crumb">Solution</span>
+        <span style="color: #C1C7D0;">→</span>
+        <span class="crumb active">★ Impact</span>
+      </div>
+      <div class="brand">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M11.53 2C6.46 2.15 2.37 6.13 2.03 11.2C1.65 17.02 6.27 22 12.08 22C17.61 22 22.08 17.53 22.08 12C22.08 6.48 17.61 2 12.08 2H11.53ZM12.08 20C7.66 20 4.08 16.42 4.08 12C4.08 7.58 7.66 4 12.08 4C16.5 4 20.08 7.58 20.08 12C20.08 16.42 16.5 20 12.08 20Z" fill="#0052CC"/>
+        </svg>
+        ATLASSIAN
+      </div>
+    </div>
+
+    <!-- Title & Executive Callout -->
+    <div class="title-row">
+      <div>
+        <h1 class="slide-title">Revenue at Risk: Before vs. After Interventions</h1>
+        <p class="slide-subtitle">Scenario-based simulation modeling expected revenue protection across 30-day and 90-day renewal horizons</p>
+      </div>
+      <div class="executive-callout">
+        <div class="headline">Revenue at Risk Falls by 36% – 38%</div>
+        <div class="sub">Preserves ~$0.93M (30d) & ~$1.10M (90d) in recurring MRR ($11.2M - $13.2M ARR)</div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="slide-body">
+      <!-- Left Column: Dynamic Chart & Impact Table -->
+      <div class="left-col">
+        <div class="chart-card">
+          <div class="chart-controls">
+            <div class="chart-title" id="chart-caption">Revenue at Risk: Before vs. After Grouped Comparison</div>
+            <div class="btn-group">
+              <button class="btn active" onclick="switchChart('comparison', this)">Comparison Bar</button>
+              <button class="btn" onclick="switchChart('waterfall', this)">Waterfall Attribution</button>
+              <button class="btn" onclick="switchChart('pareto', this)">Risk Concentration</button>
+            </div>
+          </div>
+          <div class="chart-img-container">
+            <img id="main-chart-img" src="revenue_at_risk_before_after.png" alt="Revenue at Risk Before vs After">
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Horizon</th>
+                <th>Before Interventions</th>
+                <th>After (Scenario)</th>
+                <th>Net Risk Reduction</th>
+                <th>MRR Preserved</th>
+                <th>Annualized Protected</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>30-Day Tactical</strong></td>
+                <td>$2.44M</td>
+                <td><strong>$1.51M</strong></td>
+                <td><span class="highlight-pill pill-green">-38.1%</span></td>
+                <td><strong>+$0.93M / mo</strong></td>
+                <td>$11.16M Run-Rate</td>
+              </tr>
+              <tr>
+                <td><strong>90-Day Renewal</strong></td>
+                <td>$3.07M</td>
+                <td><strong>$1.97M</strong></td>
+                <td><span class="highlight-pill pill-green">-35.8%</span></td>
+                <td><strong>+$1.10M / mo</strong></td>
+                <td>$13.20M Run-Rate</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Right Column: Mathematical Framework & Levers -->
+      <div class="right-col">
+        <div class="formula-card">
+          <div class="formula-title">Definition: Expected Revenue at Risk</div>
+          <div class="formula-math">Revenue at Risk = ∑ (Most Recent MRR_i × Churn_Prob_i)</div>
+          <p class="formula-desc">
+            Expected value of churned revenue over the planning horizon. Because risk is convex, high-revenue accounts in upper churn deciles contribute disproportionately: <strong>top 5% of accounts generate 41.2% ($1.01M) of total risk</strong>.
+          </p>
+        </div>
+
+        <div class="levers-container">
+          <div class="lever-card">
+            <div class="lever-header">
+              <span class="lever-tag tag-onboarding">Lever 1: Onboarding Activation</span>
+              <span class="lever-saved">+$0.24M MRR Saved (30d)</span>
+            </div>
+            <div class="lever-title">Target: 0–2 Month-1 Sessions (Dormant New Users)</div>
+            <p class="lever-detail">
+              <strong>Assumption:</strong> 50% of new users with 0–2 sessions in month 1 are nudged by in-app onboarding checklist to increase activity by +1 session, preventing early abandonment.
+            </p>
+          </div>
+
+          <div class="lever-card">
+            <div class="lever-header">
+              <span class="lever-tag tag-diversity">Lever 2: Feature & Cross-Product Stickiness</span>
+              <span class="lever-saved">+$0.31M MRR Saved (30d)</span>
+            </div>
+            <div class="lever-title">Target: Single-Tool Accounts (Cross-Tool Expansion)</div>
+            <p class="lever-detail">
+              <strong>Assumption:</strong> Contextual product prompts lift <code>feature_diversity</code> by +1 and <code>team_invite_prop</code> by +0.1 for 30% of single-tool accounts, establishing network embeddedness.
+            </p>
+          </div>
+
+          <div class="lever-card">
+            <div class="lever-header">
+              <span class="lever-tag tag-risk">Lever 3: Precision Risk Intervention</span>
+              <span class="lever-saved">+$0.38M MRR Saved (30d)</span>
+            </div>
+            <div class="lever-title">Target: Top 5% XGBoost Revenue-at-Risk Cohort</div>
+            <p class="lever-detail">
+              <strong>Assumption:</strong> High-touch proactive CSM outreach (EBRs & workflow audit) on top 5% risk cohort reduces churn probability by 30%, yielding a <strong>13.4x program ROI</strong>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide Footer -->
+    <div class="slide-footer">
+      <div class="speaker-script">
+        <span>Say (25s):</span> "Translating model scores into dollars, baseline revenue at risk is $2.44M. Because risk is convex—top 5% accounts drive 41% of exposure—our three targeted levers reduce risk by 38%, preserving $0.93M in monthly revenue and over $11M in ARR."
+      </div>
+      <div class="meta-time">Slide 15 · 30 Seconds · Solution & Impact</div>
+    </div>
+  </div>
+
+  <script>
+    function switchChart(type, btn) {
+      document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const img = document.getElementById('main-chart-img');
+      const caption = document.getElementById('chart-caption');
+
+      if (type === 'comparison') {
+        img.src = 'revenue_at_risk_before_after.png';
+        caption.innerText = 'Revenue at Risk: Before vs. After Grouped Comparison';
+      } else if (type === 'waterfall') {
+        img.src = 'revenue_waterfall_attribution.png';
+        caption.innerText = '30-Day Revenue at Risk: Waterfall Attribution by Lever';
+      } else if (type === 'pareto') {
+        img.src = 'revenue_risk_pareto.png';
+        caption.innerText = 'Revenue at Risk Concentration (Convex Pareto Distribution)';
+      }
+    }
+  </script>
+</body>
+</html>

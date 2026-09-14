@@ -133,6 +133,56 @@ st.caption(
 
 st.divider()
 
+# --- Longitudinal Telemetry: 5-Month Trajectory ------------------------------
+st.subheader("Longitudinal Telemetry: 5-Month Engagement Trajectory")
+st.caption(
+    "How this customer's engagement progressed from Month 1 (Jan) to Month 5 (May) "
+    "compared to the healthy and disengaged peer cohort benchmarks."
+)
+try:
+    from analysis.trajectory_utils import build_trajectory_plot
+    scorer_traj_metric = st.selectbox(
+        "Trajectory Metric:",
+        ["Active Days", "Sessions", "Product Actions"],
+        index=0,
+        key="scorer_traj_metric_select",
+    )
+    fig_scorer_traj = build_trajectory_plot(metric=scorer_traj_metric, selected_customers=[customer_id])
+    render_plotly_chart(fig_scorer_traj, width="stretch", key=f"scorer_traj_{customer_id}_{scorer_traj_metric}")
+except Exception as e:
+    st.info(f"Longitudinal trajectory plot temporarily unavailable: {e}")
+
+st.divider()
+
+# --- SHAP Risk Attribution: Explainable AI ----------------------------------
+st.subheader("Why this customer? (SHAP Positive vs. Negative Risk Attribution)")
+st.caption(
+    "SHAP (Shapley Additive exPlanations) breaks down the exact marginal contribution of each telemetry "
+    "metric to this customer's forecasted disengagement risk. Red bars (Right / +) escalate churn risk; "
+    "blue bars (Left / -) act as protective retention factors."
+)
+
+shap_choice_col, _ = st.columns([2, 2])
+with shap_choice_col:
+    shap_plot_type = st.radio(
+        "Attribution plot style:",
+        ["Double-Sided Impact Plot (+/-)", "Sequential Waterfall"],
+        horizontal=True,
+        key="scorer_shap_plot_type",
+    )
+
+try:
+    from analysis.shap_utils import build_shap_diverging_bar, build_shap_waterfall
+    if shap_plot_type == "Double-Sided Impact Plot (+/-)":
+        fig_shap = build_shap_diverging_bar(customer_id)
+    else:
+        fig_shap = build_shap_waterfall(customer_id)
+    render_plotly_chart(fig_shap, width="stretch", key=f"scorer_shap_{customer_id}_{shap_plot_type}")
+except Exception as e:
+    st.info(f"SHAP attribution temporarily unavailable: {e}")
+
+st.divider()
+
 # --- What: the recommended action -------------------------------------------
 st.subheader(f"Recommended action for {row['Primary Product']}")
 st.markdown(f"**{row['Recommended Action']}**")

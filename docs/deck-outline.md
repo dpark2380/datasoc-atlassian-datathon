@@ -405,7 +405,33 @@ Put on the slide:
 Line to say: Protect current value first, then test expansion where a specific
 adoption gap is visible.
 
-## Slide 16. Introducing the Customer Risk Playbook
+## Slide 16. Revenue at Risk: Before vs After Interventions (Scenario-Based)
+
+Time: 30 seconds. Purpose: Solution and Recommendation (Financial Impact).
+
+Headline: Targeted interventions reduce revenue at risk by 36%–38%, safeguarding
+~$0.93M to ~$1.10M in recurring MRR.
+
+Figure to add: a grouped bar chart comparing **Before vs After Revenue at Risk**
+across 30d and 90d horizons, paired with a 30-day **waterfall attribution bridge**
+decomposing savings across onboarding, cross-tool expansion, and precision CSM outreach.
+
+Put on the slide:
+
+- **Definition:** Revenue at Risk = $\sum (\text{Most Recent MRR} \times \text{Modelled Churn Probability})$.
+- **Convexity:** Top 5% at-risk revenue cohort holds 41.2% ($1.01M) of total portfolio risk exposure.
+- **30-Day Tactical:** $2.44M -> $1.51M (-38.1%, preserves $0.93M MRR / $11.16M ARR).
+- **90-Day Renewal:** $3.07M -> $1.97M (-35.8%, preserves $1.10M MRR / $13.20M ARR).
+- **Three Levers:** Onboarding activation (50% 0-2 sess +1), cross-product triggers (+1 tool, +0.1 invite for 30%), and high-touch CSM on top 5% (-30% churn prob).
+- **Economics:** $11M–$13M ARR protected against ~$0.83M–$1.20M CSM capacity yields a 10x–13x program ROI.
+
+Line to say: Because risk is convex—top 5% accounts drive 41% of exposure—our
+three targeted levers reduce risk by 38%, preserving $0.93M in monthly revenue
+and over $11M in ARR at a 13x program ROI.
+
+Source: `analysis/revenue_simulation.py`.
+
+## Slide 17. Introducing the Customer Risk Playbook
 
 Time: 20 seconds. Purpose: product reveal and close.
 

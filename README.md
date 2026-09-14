@@ -90,6 +90,16 @@ Actually Disengaged(M5)│     134 (FN)      │     318 (TP)      │  →   45
 
 > **Core Telemetry Insight**: Session frequency and daily routine regularity are far more predictive of future retention than episodic volume spikes. Disengagement starts with decreasing login frequency before total volume drops.
 
+### Explainable AI: SHAP Beeswarm Summary & Bi-Directional Risk Attribution
+While global feature rankings show aggregate importance, our engine implements **SHAP (SHapley Additive exPlanations) TreeExplainer** (`analysis/shap_utils.py`) to provide granular, account-level positive vs. negative risk attribution:
+- **SHAP Beeswarm Summary Plot (Red & Blue Dots along X-Axis)**:
+  - **X-Axis (SHAP Value)**: Spread along the horizontal axis showing marginal impact on Month 5 disengagement probability. Left of 0 (< 0) represents protective retention factors; right of 0 (> 0) represents risk drivers.
+  - **Dot Color**: Feature value for that specific customer (**Red = High**, **Blue = Low**).
+  - **Key Empirical Discovery**: For *Avg Sessions (M1-4)*, a heavy cluster of **Blue dots (low session counts)** stretches far to the right (+15% to +25% disengagement risk), while **Red dots (high session counts)** pull risk down by -10% to -15%. Conversely, ticket volume dots cluster tightly around zero with no separation between red and blue, confirming support tickets do not differentiate churn.
+- **Double-Sided Impact Plot (+/-)**: Centered at zero for an individual customer, horizontal bars extend **Right (Red / +)** for metrics that escalate disengagement risk, and **Left (Blue / -)** for protective retention factors (e.g. high collaborator counts or integrations mitigating a session drop).
+- **Global Bi-Directional Impact**: Decomposes company-wide feature impacts into their average risk-escalating magnitude versus protective retention magnitude.
+- **Interactive Tooling**: Available dynamically in the `Risk Scorer` live demo, in the `Dashboard` case study expander, and exported at `docs/shap_beeswarm.png` (300-DPI publication asset), `docs/shap_beeswarm_interactive.html`, and `docs/shap_double_sided.html`.
+
 ---
 
 ## 4. Part 2: Unsupervised Behavioral Segmentation & Anomaly Attribution (Diagnosing *WHO* & *WHAT TO DO*)
@@ -128,19 +138,29 @@ Only 18.3% overlap with the quartile At Risk flag, proving Isolation Forest dete
 
 ```
 ├── README.md                                  # Comprehensive documentation
+├── requirements.txt                           # Frozen Python environment dependencies
 ├── streamlit_app.py                           # App entry point (verifies pipeline & launches navigation)
 ├── app_pages/
 │   ├── dashboard.py                           # Full results dashboard (Segments, Radar, Reliability, Sensitivity)
-│   └── risk_scorer.py                         # Single-customer lookup tool (Live Demo with 30-Day Risk Forecast)
+│   ├── risk_scorer.py                         # Single-customer lookup tool (Live Demo with SHAP Waterfall & Risk Forecast)
+│   └── chart_styling.py                       # Atlassian brand chart design system
 ├── analysis/
 │   ├── eda.py                                 # Feature engineering, peer standardization, K-Means & Anomaly attribution
 │   ├── predict_disengagement.py               # Supervised Random Forest & Logistic Regression pipeline
+│   ├── shap_utils.py                          # TreeExplainer & interactive Plotly SHAP waterfall generator
+│   ├── trajectory_utils.py                    # 5-month longitudinal engagement trajectories & archetypes
 │   ├── customer_risk.csv                      # Generated 33-column customer database with risk & cluster tags
 │   ├── customer_disengagement_predictions.csv # Customer-level predicted probabilities vs actual outcomes
 │   ├── ml_results.json                        # Machine-readable test metrics, ROC coordinates, and confusion matrix
 │   ├── reliability_checks.py                  # ICC metric reliability & trend permutation tests
 │   └── sensitivity_checks.py                  # Cutoff, embeddedness weight, and bootstrap sensitivity audits
 ├── docs/
+│   ├── monthly_engagement_trajectories.png    # 300 DPI multi-panel longitudinal engagement plot
+│   ├── monthly_engagement_trajectories.html   # Interactive Plotly longitudinal trajectory tool
+│   ├── shap_beeswarm.png                      # Publication-quality (300 DPI) SHAP summary beeswarm plot
+│   ├── shap_beeswarm_interactive.html         # Interactive Plotly beeswarm plot (red & blue dots along x-axis)
+│   ├── shap_double_sided.html                 # Standalone interactive double-sided positive/negative attribution
+│   ├── shap_waterfall.html                    # Standalone interactive Plotly SHAP waterfall explanation
 │   ├── confusion_matrix.html                  # Standalone interactive Plotly Confusion Matrix & F1 report
 │   ├── supervised_model_performance.html      # Standalone interactive 3-panel Radar dashboard
 │   ├── findings-summary.md                    # One-page executive findings summary

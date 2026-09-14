@@ -317,7 +317,45 @@ SLIDES = [
         "line": "The framework protects current value first, then tests expansion where a specific adoption gap is visible.",
     },
     {
-        "title": "16. Introducing the Customer Risk Playbook",
+        "title": "16. Revenue at Risk: Before vs After Interventions",
+        "time": "30 sec",
+        "serves": "Solution & Recommendation (Business Impact)",
+        "headline": "Targeted interventions reduce revenue at risk by 36%–38%, safeguarding ~$0.93M to ~$1.10M in recurring MRR.",
+        "figure": (
+            "A grouped bar chart of **Revenue at Risk: Before vs After Interventions** across 30d and 90d "
+            "horizons, paired with a 30-day **waterfall attribution bridge** decomposing the impact of "
+            "onboarding nudges, cross-product expansion, and top 5% precision CSM outreach."
+        ),
+        "images": [
+            {"path": "docs/revenue_at_risk_before_after.png", "caption": "Before vs After Interventions (30d vs 90d)"},
+            {"path": "docs/revenue_waterfall_attribution.png", "caption": "30-Day Waterfall Attribution by Intervention Lever"},
+            {"path": "docs/revenue_risk_pareto.png", "caption": "Revenue at Risk Concentration (Pareto Convexity)"}
+        ],
+        "table": pd.DataFrame(
+            {
+                "Horizon": ["30-Day Tactical", "90-Day Renewal"],
+                "Before Interventions": ["$2.44M", "$3.07M"],
+                "After (Scenario)": ["$1.51M", "$1.97M"],
+                "Risk Reduction": ["-38.1%", "-35.8%"],
+                "MRR Preserved": ["+$0.93M / mo", "+$1.10M / mo"],
+                "Annualized Run-Rate Protected": ["$11.16M ARR", "$13.20M ARR"],
+            }
+        ),
+        "points": [
+            "Definition: Revenue at Risk = ∑ (Most Recent MRR × Modelled Churn Probability) across all accounts.",
+            "Convexity: The top 5% at-risk revenue cohort accounts for 41.2% of total dollar exposure ($1.01M MRR).",
+            "Lever 1 (Onboarding): 50% of 0-2 session new users nudged +1 session → -$0.24M MRR risk.",
+            "Lever 2 (Feature Diversity): Cross-tool triggers lift diversity +1 & team invite +0.1 for 30% of single-tool users → -$0.31M MRR risk.",
+            "Lever 3 (Precision CSM): Proactive outreach on top 5% at-risk cohort reduces churn probability by 30% → -$0.38M MRR risk.",
+            "Program Economics: Safeguarding $11M–$13M ARR against ~$0.83M–$1.20M CSM capacity yields a 10x–13x ROI.",
+        ],
+        "line": (
+            "Because risk is convex—top 5% accounts drive 41% of exposure—our three targeted levers reduce risk "
+            "by 38%, preserving $0.93M in monthly revenue and over $11M in ARR at a 13x program ROI."
+        ),
+    },
+    {
+        "title": "17. Introducing the Customer Risk Playbook",
         "time": "20 sec",
         "serves": "Product reveal and close",
         "headline": "One account, one explanation, one next action.",
@@ -344,6 +382,13 @@ for slide in SLIDES:
         st.markdown(f"### {slide['headline']}")
         st.markdown("**Figure to add**")
         st.markdown(slide["figure"])
+        if "images" in slide:
+            cols = st.columns(len(slide["images"]))
+            for idx, img_info in enumerate(slide["images"]):
+                with cols[idx]:
+                    st.image(img_info["path"], caption=img_info.get("caption"), use_container_width=True)
+        elif "image" in slide:
+            st.image(slide["image"], use_container_width=True)
         st.markdown("**Put on the slide**")
         st.markdown("\n".join(f"- {point}" for point in slide["points"]))
         if "table" in slide:
