@@ -789,16 +789,19 @@ with tab_risk:
             "Jira": "No outreach; continue tracking task activity and workflow automation over time",
         },
         "New & Struggling": {
-            "Loom": "A guided session helping the customer record and share their first video, "
-            "with progress checked over the following three months",
-            "Confluence": "A guided session helping the customer set up a working team workspace, "
-            "with progress checked over the following three months",
-            "Trello": "A guided session helping the customer launch a board and assign the team's "
-            "workflow, with progress checked over the following three months",
-            "Bitbucket": "A guided session helping the customer connect a project and complete an "
-            "initial task, with progress checked over the following three months",
-            "Jira": "A guided session helping the customer launch a project with a starter backlog, "
-            "with progress checked over the following three months",
+            "Loom": "An automated setup prompt triggers immediately; if the customer hasn't recorded "
+            "and shared a first video, a guided session follows, with progress checked over three months",
+            "Confluence": "An automated setup prompt triggers immediately; if the customer hasn't set "
+            "up a working team workspace, a guided session follows, with progress checked over three months",
+            "Trello": "An automated setup prompt triggers immediately; if the customer hasn't launched "
+            "a board with the team's workflow, a guided session follows, with progress checked over "
+            "three months",
+            "Bitbucket": "An automated setup prompt triggers immediately; if the customer hasn't "
+            "connected a project and completed an initial task, a guided session follows, with progress "
+            "checked over three months",
+            "Jira": "An automated setup prompt triggers immediately; if the customer hasn't launched a "
+            "project with a starter backlog, a guided session follows, with progress checked over three "
+            "months",
         },
         "Established & Low Engagement": {
             "Loom": "An automated prompt encouraging the customer to resume regular video updates, "
@@ -813,16 +816,21 @@ with tab_risk:
             "followed by a short training session if activity doesn't recover",
         },
         "High-Value Disengaged": {
-            "Loom": "A scheduled meeting between account and customer leadership reviewing video "
-            "engagement and agreeing a recovery plan",
-            "Confluence": "A scheduled meeting between account and customer leadership reviewing team "
-            "contribution and agreeing a recovery plan",
-            "Trello": "A scheduled meeting between account and customer leadership reviewing "
-            "collaboration activity and agreeing a recovery plan",
-            "Bitbucket": "A scheduled meeting between account and customer leadership reviewing "
-            "development activity and agreeing a recovery plan",
-            "Jira": "A scheduled meeting between account and customer leadership reviewing delivery "
-            "activity and agreeing a recovery plan",
+            "Loom": "An automated alert immediately flags the account internally; a named executive "
+            "then schedules a meeting with customer leadership reviewing video engagement and agreeing "
+            "a recovery plan",
+            "Confluence": "An automated alert immediately flags the account internally; a named "
+            "executive then schedules a meeting with customer leadership reviewing team contribution and "
+            "agreeing a recovery plan",
+            "Trello": "An automated alert immediately flags the account internally; a named executive "
+            "then schedules a meeting with customer leadership reviewing collaboration activity and "
+            "agreeing a recovery plan",
+            "Bitbucket": "An automated alert immediately flags the account internally; a named "
+            "executive then schedules a meeting with customer leadership reviewing development activity "
+            "and agreeing a recovery plan",
+            "Jira": "An automated alert immediately flags the account internally; a named executive "
+            "then schedules a meeting with customer leadership reviewing delivery activity and agreeing "
+            "a recovery plan",
         },
     }
     generic_pivot = pd.DataFrame(GENERIC_ACTIONS).T.reindex(CATEGORY_ORDER).rename_axis("Risk Category")
