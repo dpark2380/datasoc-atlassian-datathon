@@ -816,19 +816,19 @@ with tab_risk:
             "followed by a short training session if activity doesn't recover",
         },
         "High-Value Disengaged": {
-            "Loom": "An automated alert flags the account internally; a named account executive "
+            "Loom": "An automated alert flags the account internally; a senior Customer Success leader "
             "reaches out to understand what's blocking video adoption and agrees a plan to help the "
             "customer realise more value",
-            "Confluence": "An automated alert flags the account internally; a named account executive "
+            "Confluence": "An automated alert flags the account internally; a senior Customer Success leader "
             "reaches out to understand what's blocking team adoption and agrees a plan to help the "
             "customer realise more value",
-            "Trello": "An automated alert flags the account internally; a named account executive "
+            "Trello": "An automated alert flags the account internally; a senior Customer Success leader "
             "reaches out to understand what's blocking collaboration and agrees a plan to help the "
             "customer realise more value",
-            "Bitbucket": "An automated alert flags the account internally; a named account executive "
+            "Bitbucket": "An automated alert flags the account internally; a senior Customer Success leader "
             "reaches out to understand what's blocking development adoption and agrees a plan to help "
             "the customer realise more value",
-            "Jira": "An automated alert flags the account internally; a named account executive "
+            "Jira": "An automated alert flags the account internally; a senior Customer Success leader "
             "reaches out to understand what's blocking delivery adoption and agrees a plan to help the "
             "customer realise more value",
         },
