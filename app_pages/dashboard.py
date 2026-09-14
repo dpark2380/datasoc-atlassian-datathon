@@ -181,10 +181,223 @@ if not plans:
 filtered = risk[risk["Plan Type"].isin(plans)]
 at_risk = filtered[filtered["At Risk"]]
 
-tab_eda, tab_overview, tab_risk, tab_segments, tab_reliability, tab_robustness, tab_docs = st.tabs(
-    ["EDA", "Overview", "Risk model", "Usage segments (ML)", "Data reliability",
+tab_solution, tab_eda, tab_overview, tab_risk, tab_segments, tab_reliability, tab_robustness, tab_docs = st.tabs(
+    ["Solution", "EDA", "Overview", "Risk model", "Usage segments (ML)", "Data reliability",
      "Robustness checks", "Documentation"]
 )
+
+# --- Solution ------------------------------------------------------------------
+with tab_solution:
+    st.subheader("What the solution is")
+    st.info(
+        "Detect disengagement early using fair, peer-relative usage comparisons, then route each account "
+        "to a specific, evidence-based action instead of a one-size-fits-all response.",
+        icon=":material/lightbulb:",
+    )
+    st.caption(
+        "Computed monthly from usage data alone, never from the support ticket file, which failed its own "
+        "data-quality audit (see the EDA and Data reliability tabs)."
+    )
+
+    st.divider()
+    st.subheader("The pipeline: how the six components fit together")
+    st.caption(
+        "One backbone (data → composites → rule → score), corroborated by two diagnostic checks and one "
+        "forecaster that don't decide anything on their own, converging on three outputs."
+    )
+
+    b1, a1, b2, a2, b3, a3, b4 = st.columns([3, 0.5, 3, 0.5, 3, 0.5, 3])
+    with b1:
+        with st.container(border=True):
+            st.markdown("**Usage data**")
+            st.caption("product_usage.csv, 5 months")
+    with a1:
+        st.markdown("<div style='text-align:center;padding-top:30px;font-size:24px'>→</div>", unsafe_allow_html=True)
+    with b2:
+        with st.container(border=True):
+            st.markdown("**Reliability-weighted composites**")
+            st.caption("Standardised, weighted by measured reliability")
+    with a2:
+        st.markdown("<div style='text-align:center;padding-top:30px;font-size:24px'>→</div>", unsafe_allow_html=True)
+    with b3:
+        with st.container(border=True):
+            st.markdown("**Peer-relative rule**")
+            st.caption("Bottom 25% within Plan x Product peer group")
+    with a3:
+        st.markdown("<div style='text-align:center;padding-top:30px;font-size:24px'>→</div>", unsafe_allow_html=True)
+    with b4:
+        with st.container(border=True):
+            st.markdown("**Risk Score & Risk Category**")
+            st.caption("Output 1")
+
+    st.markdown(
+        "<div style='text-align:center;color:#5E6C84;font-size:15px;margin-top:8px'>"
+        "↑ corroborated by, and given an early warning from ↑</div>",
+        unsafe_allow_html=True,
+    )
+    d1, d2, d3 = st.columns(3)
+    with d1:
+        with st.container(border=True):
+            st.markdown("**KMeans clustering**")
+            st.caption("Independent corroboration of the categories")
+    with d2:
+        with st.container(border=True):
+            st.markdown("**Isolation Forest**")
+            st.caption("Flags unusual shape, not level, a separate watch-list")
+    with d3:
+        with st.container(border=True):
+            st.markdown("**Month-5 forecaster**")
+            st.caption("Supervised early warning, 0.921 held-out AUC")
+
+    st.markdown(
+        "<div style='text-align:center;font-size:24px;margin-top:8px'>↓</div>", unsafe_allow_html=True
+    )
+    o1, o2 = st.columns(2)
+    with o1:
+        with st.container(border=True):
+            st.markdown("**Product-specific recommended action**")
+            st.caption("Output 2, category + Primary Product")
+    with o2:
+        with st.container(border=True):
+            st.markdown("**Live Risk Scorer tool**")
+            st.caption("Output 3, score + category + action + forecast, one screen")
+
+    st.divider()
+    st.subheader("The three outputs")
+    out1, out2, out3 = st.columns(3, border=True)
+    with out1:
+        st.markdown("#### 1. Risk Score & Risk Category")
+        st.markdown(
+            "Every customer scored 0-100 and placed in one of four categories, comparing them only to "
+            "peers on the same Plan Type and Primary Product."
+        )
+        st.caption("Built from: the peer-relative rule, on reliability-weighted composites.")
+        st.caption(
+            "Why: the decision layer has to be explainable to a human without translation, so it's a rule, "
+            "not a trained model."
+        )
+    with out2:
+        st.markdown("#### 2. Recommended Action")
+        st.markdown(
+            "A specific, sourced next step for each at-risk customer: category sets the intensity, "
+            "Primary Product sets the workflow."
+        )
+        st.caption("Built from: product-specific actions, applied to the Risk Category above.")
+        st.caption("Why: a generic check-in email is not a solution; a named CS playbook is.")
+    with out3:
+        st.markdown("#### 3. Live Risk Scorer")
+        st.markdown(
+            "One screen per customer: score, peer comparison, category, recommended action, and (where "
+            "available) the forecast probability."
+        )
+        st.caption("Built from: all six components, surfaced together.")
+        st.caption("Why: the analysis only matters if someone can act on it in real time.")
+
+    st.divider()
+    st.subheader("The components, why each exists, and how it works")
+    st.caption(
+        "Six pieces make up the solution. Each entry states what it is, how it works, and why it was "
+        "chosen over the alternative rejected for that job."
+    )
+
+    with st.expander("1. Peer-relative usage rule (Risk Score and Risk Category)", expanded=True):
+        st.markdown(
+            "**What it is:** the decision layer. A hand-built rule, not a trained model, since there is no "
+            "churn label in this dataset to train or validate one against.\n\n"
+            "**How it works:** each customer's Engagement Composite (Active Days, Sessions, Product "
+            "Actions, standardised and reliability-weighted) is ranked as a percentile within their own "
+            "Plan Type x Primary Product peer group. The bottom 25% of that percentile is flagged At "
+            "Risk. At-risk customers are then split into three categories by tenure (bottom 25% of "
+            "Account Age across the whole base = recently acquired) and value (Enterprise/Premium plan, "
+            "or top 25% of Embeddedness Percentile).\n\n"
+            "**Why this, not a black box:** the layer a CS rep has to act on and explain to a customer or "
+            "to leadership needs to be interpretable without translation. Every account's status traces "
+            "back to named, inspectable numbers, not a prediction nobody can decompose."
+        )
+
+    with st.expander("2. Reliability-weighted composites"):
+        st.markdown(
+            "**What it is:** the method used to combine multiple raw metrics into the Engagement "
+            "Composite and Embeddedness Percentile above.\n\n"
+            "**How it works:** each metric is standardised (z-scored), then weighted by its measured "
+            "reliability, the share of its variance that is a stable customer trait rather than "
+            "month-to-month noise (Spearman-Brown adjusted, computed from `product_usage.csv` at "
+            "runtime). Collaborators (0.628 reliability, the noisiest metric) and Integrations Used "
+            "(0.892) combine 41%/59%. Active Days, Sessions, and Product Actions (0.958, 0.976, 0.916) "
+            "are close enough together that reliability weighting barely moves an equal three-way split.\n\n"
+            "**Why this, not equal or hand-picked weights:** an earlier version multiplied raw values "
+            "directly, so a metric's real influence depended on its raw scale rather than any stated "
+            "intent (Collaborators worked out to an effective 38% despite a nominal 1:2 weighting). "
+            "Reliability weighting makes the split measured and stated, not an accident of scale."
+        )
+
+    with st.expander("3. Product-specific recommended actions"):
+        st.markdown(
+            "**What it is:** the action layer. Risk Category sets how urgent and human-intensive the "
+            "response is; Primary Product sets what the response actually asks the customer to do.\n\n"
+            "**How it works:** each of the four categories maps to a documented process from a named "
+            "Customer Success platform (a milestone-tracked onboarding review, an automated "
+            "feature-specific reactivation play, an executive business review), then that process is "
+            "phrased around the customer's actual product (a Jira backlog, a Confluence space, a Trello "
+            "board, a Bitbucket repository, or a Loom recording).\n\n"
+            "**Why this, not a generic email:** the first draft was generic (\"send an email, schedule a "
+            "check-in\"), which is not a solution. Automation carries the routine cases (Established & Low "
+            "Engagement escalates to a human only if the automated sequence fails); human effort is "
+            "reserved for the one tier above the threshold where Atlassian's own filings say it assigns "
+            "people at all."
+        )
+
+    with st.expander("4. Unsupervised usage clustering (KMeans)"):
+        st.markdown(
+            "**What it is:** an independent check on the hand-built categories above, built with no "
+            "knowledge of the Risk Score logic.\n\n"
+            "**How it works:** KMeans groups customers by their five usage metrics, standardised within "
+            "each customer's own Primary Product (so a Loom account isn't penalised for a lower category "
+            "baseline than Jira). k=2 gives the cleanest separation (silhouette 0.40) but mostly restates "
+            "the plan-tier finding; k=4 (silhouette 0.30) trades some separation to split usage volume "
+            "from integration depth into four named segments.\n\n"
+            "**Why this, and why not treat it as the production model:** there is no outcome label to "
+            "train or score a supervised segmentation against, so it is evaluated on internal statistical "
+            "properties (cluster separation), not prediction accuracy. Its value is corroboration: the "
+            "segments KMeans finds on its own line up with the categories built by hand, without having "
+            "seen them."
+        )
+
+    with st.expander("5. Usage anomaly detection (Isolation Forest)"):
+        st.markdown(
+            "**What it is:** a complementary signal that measures the *shape* of a customer's usage, not "
+            "its *level*, which the At Risk rule cannot see by construction.\n\n"
+            "**How it works:** Isolation Forest runs on the same five standardised metrics as clustering "
+            "(5% contamination), flagging the customers whose combination of values is most isolated from "
+            "the rest of the population. It flags 416 of 8,320 customers (5.0%); only 18.3% of those "
+            "overlap with the At Risk flag, confirming it surfaces a mostly different population, an "
+            "unusual pattern rather than simply a low one.\n\n"
+            "**Why this, and its real limit:** anomaly does not mean at risk, and is not itself an action "
+            "trigger. Its practical use is a short watch-list worth a human glance, plus evidence the risk "
+            "model was checked against an unsupervised signal rather than only asserted."
+        )
+
+    with st.expander("6. Month-5 disengagement forecaster (supervised ML)"):
+        st.markdown(
+            "**What it is:** the one predictive, supervised component, an early-warning layer, not the "
+            "decision layer.\n\n"
+            "**How it works:** a Random Forest is trained on Months 1-4 usage telemetry to predict "
+            "bottom-quartile engagement in Month 5, an outcome that is actually observed in the data "
+            "(unlike churn, which is not). Held out on a test set of 1,664 customers, it reaches 0.921 "
+            "ROC-AUC, 74.1% precision, and 70.4% recall. Feature importances (average Sessions, Active "
+            "Days, and Product Actions over Months 1-4) are reported rather than treated as a black box.\n\n"
+            "**Why this, not a churn model, and why it doesn't replace the rule:** there is no contract "
+            "churn label in this dataset, so a churn model would have nothing honest to train against. "
+            "This forecaster's output is called disengagement risk, not churn probability, and it flags "
+            "who may drop next month; the peer-relative rule above still decides the category and the "
+            "action, since that layer is the one that has to be explained to a human."
+        )
+
+    st.divider()
+    st.caption(
+        "Full detail behind every component, including the sensitivity and reliability checks each one "
+        "was tested against, is in the Documentation tab."
+    )
 
 # --- EDA ---------------------------------------------------------------------
 with tab_eda:
@@ -562,6 +775,67 @@ with tab_risk:
     ).reindex(CATEGORY_ORDER).rename_axis("Risk Category")
     st.dataframe(action_pivot, width="stretch")
 
+    st.markdown("**Plain-language version, for a general audience (deck-ready)**")
+    st.caption(
+        "Same table, rewritten without internal feature names (Butler, Power-Ups, Pipelines, and similar), "
+        "so it's understandable to someone who doesn't use these products day to day."
+    )
+    GENERIC_ACTIONS = {
+        "Monitor Only": {
+            "Loom": "No outreach; continue tracking video creation and viewer engagement over time",
+            "Confluence": "No outreach; continue tracking page activity and team contributions over time",
+            "Trello": "No outreach; continue tracking board activity and collaboration over time",
+            "Bitbucket": "No outreach; continue tracking code activity and integration use over time",
+            "Jira": "No outreach; continue tracking task activity and workflow automation over time",
+        },
+        "New & Struggling": {
+            "Loom": "An automated setup prompt triggers immediately; if the customer hasn't recorded "
+            "and shared a first video, a guided session follows, with progress checked over three months",
+            "Confluence": "An automated setup prompt triggers immediately; if the customer hasn't set "
+            "up a working team workspace, a guided session follows, with progress checked over three months",
+            "Trello": "An automated setup prompt triggers immediately; if the customer hasn't launched "
+            "a board with the team's workflow, a guided session follows, with progress checked over "
+            "three months",
+            "Bitbucket": "An automated setup prompt triggers immediately; if the customer hasn't "
+            "connected a project and completed an initial task, a guided session follows, with progress "
+            "checked over three months",
+            "Jira": "An automated setup prompt triggers immediately; if the customer hasn't launched a "
+            "project with a starter backlog, a guided session follows, with progress checked over three "
+            "months",
+        },
+        "Established & Low Engagement": {
+            "Loom": "An automated prompt encouraging the customer to resume regular video updates, "
+            "followed by a short training session if activity doesn't recover",
+            "Confluence": "An automated prompt encouraging the customer to refresh an inactive "
+            "workspace, followed by a short training session if activity doesn't recover",
+            "Trello": "An automated prompt encouraging the customer to revive a dormant board, "
+            "followed by a short training session if activity doesn't recover",
+            "Bitbucket": "An automated prompt encouraging the customer to restart a stalled project, "
+            "followed by a short training session if activity doesn't recover",
+            "Jira": "An automated prompt encouraging the customer to restart a dormant project, "
+            "followed by a short training session if activity doesn't recover",
+        },
+        "High-Value Disengaged": {
+            "Loom": "An automated alert flags the account internally; a senior Customer Success leader "
+            "reaches out to understand what's blocking video adoption and agrees a plan to help the "
+            "customer realise more value",
+            "Confluence": "An automated alert flags the account internally; a senior Customer Success leader "
+            "reaches out to understand what's blocking team adoption and agrees a plan to help the "
+            "customer realise more value",
+            "Trello": "An automated alert flags the account internally; a senior Customer Success leader "
+            "reaches out to understand what's blocking collaboration and agrees a plan to help the "
+            "customer realise more value",
+            "Bitbucket": "An automated alert flags the account internally; a senior Customer Success leader "
+            "reaches out to understand what's blocking development adoption and agrees a plan to help "
+            "the customer realise more value",
+            "Jira": "An automated alert flags the account internally; a senior Customer Success leader "
+            "reaches out to understand what's blocking delivery adoption and agrees a plan to help the "
+            "customer realise more value",
+        },
+    }
+    generic_pivot = pd.DataFrame(GENERIC_ACTIONS).T.reindex(CATEGORY_ORDER).rename_axis("Risk Category")
+    st.dataframe(generic_pivot, width="stretch")
+
     with st.expander("Full recommended-action text for every category x product combination", expanded=False):
         product_actions = pd.DataFrame(
             [
@@ -785,7 +1059,7 @@ with tab_segments:
     anomaly_plot["Usage Anomaly"] = anomaly_plot["Usage Anomaly"].map({True: "Anomaly", False: "Not anomaly"})
     fig = px.scatter(
         anomaly_plot.sort_values("Usage Anomaly"), x="Usage Volume", y="Integration Depth", color="Usage Anomaly",
-        color_discrete_map={"Not anomaly": "#6B778C", "Anomaly": "#E10600"},
+        color_discrete_map={"Not anomaly": "#A5ADBA", "Anomaly": "#E10600"},
         opacity=0.5, render_mode="webgl",
     )
     render_plotly_chart(fig, width="stretch", key="dash_chart_7")

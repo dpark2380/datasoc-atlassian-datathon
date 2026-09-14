@@ -129,8 +129,9 @@ def recommended_action(category: str, product: str) -> str:
         return f"{product} monitoring: no outreach; track {focus['monitor']}."
     if category == "New & Struggling":
         return (
-            f"Milestone-tracked onboarding review for {product}: {focus['onboarding']}; "
-            "review progress against 30/60/90-day milestones with a named CSM owner."
+            f"Automated {product} onboarding sequence triggers immediately: {focus['onboarding']}; "
+            "if key steps go uncompleted, escalate to a milestone-tracked review with a named CSM "
+            "owner against 30/60/90-day milestones."
         )
     if category == "Established & Low Engagement":
         return (
@@ -139,8 +140,9 @@ def recommended_action(category: str, product: str) -> str:
         )
     if category == "High-Value Disengaged":
         return (
-            f"Executive Business Review for {product}: {focus['value_review']}; agree an "
-            "owner, recovery milestones, and a follow-up date with account leadership."
+            f"Automated high-priority alert flags the account immediately; a senior Customer Success "
+            f"leader reaches out to the customer to review {focus['value_review']}, and agrees a plan "
+            "to help them realise more value, with an owner and follow-up date set internally."
         )
     raise ValueError(f"Unknown risk category: {category}")
 

@@ -135,7 +135,7 @@
     }
   },
   "logistic_regression": {
-    "test_roc_auc": 0.9215
+    "test_roc_auc": 0.9216
   },
   "sample_size": 8320,
   "test_size": 1664,
