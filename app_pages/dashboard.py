@@ -782,32 +782,47 @@ with tab_risk:
     )
     GENERIC_ACTIONS = {
         "Monitor Only": {
-            "Loom": "Track recording and viewer activity",
-            "Confluence": "Track page and team activity",
-            "Trello": "Track board and collaboration activity",
-            "Bitbucket": "Track code and integration activity",
-            "Jira": "Track task and workflow activity",
+            "Loom": "No outreach; continue tracking video creation and viewer engagement over time",
+            "Confluence": "No outreach; continue tracking page activity and team contributions over time",
+            "Trello": "No outreach; continue tracking board activity and collaboration over time",
+            "Bitbucket": "No outreach; continue tracking code activity and integration use over time",
+            "Jira": "No outreach; continue tracking task activity and workflow automation over time",
         },
         "New & Struggling": {
-            "Loom": "Record and share a first video",
-            "Confluence": "Set up a starter workspace",
-            "Trello": "Launch a board with initial tasks",
-            "Bitbucket": "Connect a project, complete first task",
-            "Jira": "Launch a project with a starter backlog",
+            "Loom": "A guided session helping the customer record and share their first video, "
+            "with progress checked over the following three months",
+            "Confluence": "A guided session helping the customer set up a working team workspace, "
+            "with progress checked over the following three months",
+            "Trello": "A guided session helping the customer launch a board and assign the team's "
+            "workflow, with progress checked over the following three months",
+            "Bitbucket": "A guided session helping the customer connect a project and complete an "
+            "initial task, with progress checked over the following three months",
+            "Jira": "A guided session helping the customer launch a project with a starter backlog, "
+            "with progress checked over the following three months",
         },
         "Established & Low Engagement": {
-            "Loom": "Restart regular video updates",
-            "Confluence": "Refresh an inactive workspace",
-            "Trello": "Revive a dormant board",
-            "Bitbucket": "Restart a stalled workflow",
-            "Jira": "Restart a dormant project",
+            "Loom": "An automated prompt encouraging the customer to resume regular video updates, "
+            "followed by a short training session if activity doesn't recover",
+            "Confluence": "An automated prompt encouraging the customer to refresh an inactive "
+            "workspace, followed by a short training session if activity doesn't recover",
+            "Trello": "An automated prompt encouraging the customer to revive a dormant board, "
+            "followed by a short training session if activity doesn't recover",
+            "Bitbucket": "An automated prompt encouraging the customer to restart a stalled project, "
+            "followed by a short training session if activity doesn't recover",
+            "Jira": "An automated prompt encouraging the customer to restart a dormant project, "
+            "followed by a short training session if activity doesn't recover",
         },
         "High-Value Disengaged": {
-            "Loom": "Executive review of video engagement",
-            "Confluence": "Executive review of team contribution",
-            "Trello": "Executive review of collaboration activity",
-            "Bitbucket": "Executive review of development activity",
-            "Jira": "Executive review of delivery activity",
+            "Loom": "A scheduled meeting between account and customer leadership reviewing video "
+            "engagement and agreeing a recovery plan",
+            "Confluence": "A scheduled meeting between account and customer leadership reviewing team "
+            "contribution and agreeing a recovery plan",
+            "Trello": "A scheduled meeting between account and customer leadership reviewing "
+            "collaboration activity and agreeing a recovery plan",
+            "Bitbucket": "A scheduled meeting between account and customer leadership reviewing "
+            "development activity and agreeing a recovery plan",
+            "Jira": "A scheduled meeting between account and customer leadership reviewing delivery "
+            "activity and agreeing a recovery plan",
         },
     }
     generic_pivot = pd.DataFrame(GENERIC_ACTIONS).T.reindex(CATEGORY_ORDER).rename_axis("Risk Category")
