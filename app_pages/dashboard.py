@@ -775,6 +775,44 @@ with tab_risk:
     ).reindex(CATEGORY_ORDER).rename_axis("Risk Category")
     st.dataframe(action_pivot, width="stretch")
 
+    st.markdown("**Plain-language version, for a general audience (deck-ready)**")
+    st.caption(
+        "Same table, rewritten without internal feature names (Butler, Power-Ups, Pipelines, and similar), "
+        "so it's understandable to someone who doesn't use these products day to day."
+    )
+    GENERIC_ACTIONS = {
+        "Monitor Only": {
+            "Loom": "Track recording and viewer activity",
+            "Confluence": "Track page and team activity",
+            "Trello": "Track board and collaboration activity",
+            "Bitbucket": "Track code and integration activity",
+            "Jira": "Track task and workflow activity",
+        },
+        "New & Struggling": {
+            "Loom": "Record and share a first video",
+            "Confluence": "Set up a starter workspace",
+            "Trello": "Launch a board with initial tasks",
+            "Bitbucket": "Connect a project, complete first task",
+            "Jira": "Launch a project with a starter backlog",
+        },
+        "Established & Low Engagement": {
+            "Loom": "Restart regular video updates",
+            "Confluence": "Refresh an inactive workspace",
+            "Trello": "Revive a dormant board",
+            "Bitbucket": "Restart a stalled workflow",
+            "Jira": "Restart a dormant project",
+        },
+        "High-Value Disengaged": {
+            "Loom": "Executive review of video engagement",
+            "Confluence": "Executive review of team contribution",
+            "Trello": "Executive review of collaboration activity",
+            "Bitbucket": "Executive review of development activity",
+            "Jira": "Executive review of delivery activity",
+        },
+    }
+    generic_pivot = pd.DataFrame(GENERIC_ACTIONS).T.reindex(CATEGORY_ORDER).rename_axis("Risk Category")
+    st.dataframe(generic_pivot, width="stretch")
+
     with st.expander("Full recommended-action text for every category x product combination", expanded=False):
         product_actions = pd.DataFrame(
             [
