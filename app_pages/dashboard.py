@@ -816,21 +816,21 @@ with tab_risk:
             "followed by a short training session if activity doesn't recover",
         },
         "High-Value Disengaged": {
-            "Loom": "An automated alert immediately flags the account internally; a named executive "
-            "then schedules a meeting with customer leadership reviewing video engagement and agreeing "
-            "a recovery plan",
-            "Confluence": "An automated alert immediately flags the account internally; a named "
-            "executive then schedules a meeting with customer leadership reviewing team contribution and "
-            "agreeing a recovery plan",
-            "Trello": "An automated alert immediately flags the account internally; a named executive "
-            "then schedules a meeting with customer leadership reviewing collaboration activity and "
-            "agreeing a recovery plan",
-            "Bitbucket": "An automated alert immediately flags the account internally; a named "
-            "executive then schedules a meeting with customer leadership reviewing development activity "
-            "and agreeing a recovery plan",
-            "Jira": "An automated alert immediately flags the account internally; a named executive "
-            "then schedules a meeting with customer leadership reviewing delivery activity and agreeing "
-            "a recovery plan",
+            "Loom": "An automated alert flags the account internally; a named account executive "
+            "reaches out to understand what's blocking video adoption and agrees a plan to help the "
+            "customer realise more value",
+            "Confluence": "An automated alert flags the account internally; a named account executive "
+            "reaches out to understand what's blocking team adoption and agrees a plan to help the "
+            "customer realise more value",
+            "Trello": "An automated alert flags the account internally; a named account executive "
+            "reaches out to understand what's blocking collaboration and agrees a plan to help the "
+            "customer realise more value",
+            "Bitbucket": "An automated alert flags the account internally; a named account executive "
+            "reaches out to understand what's blocking development adoption and agrees a plan to help "
+            "the customer realise more value",
+            "Jira": "An automated alert flags the account internally; a named account executive "
+            "reaches out to understand what's blocking delivery adoption and agrees a plan to help the "
+            "customer realise more value",
         },
     }
     generic_pivot = pd.DataFrame(GENERIC_ACTIONS).T.reindex(CATEGORY_ORDER).rename_axis("Risk Category")

@@ -140,9 +140,9 @@ def recommended_action(category: str, product: str) -> str:
         )
     if category == "High-Value Disengaged":
         return (
-            f"Automated high-priority alert flags the account immediately; a named executive then "
-            f"runs an Executive Business Review for {product}: {focus['value_review']}; agree an "
-            "owner, recovery milestones, and a follow-up date with account leadership."
+            f"Automated high-priority alert flags the account immediately; a named account executive "
+            f"reaches out to the customer to review {focus['value_review']}, and agrees a plan to help "
+            "them realise more value, with an owner and follow-up date set internally."
         )
     raise ValueError(f"Unknown risk category: {category}")
 
